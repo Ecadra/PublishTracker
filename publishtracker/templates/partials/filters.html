@@ -1,0 +1,50 @@
+<!-- templates/partials/filters.html -->
+<div class="filters-section">
+    <div class="row">
+        <div class="col-md-8">
+            <form method="GET" class="d-flex" id="filtersForm">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="Buscar por título, DOI o revista...">
+                    <select class="form-select" name="status" style="max-width: 200px;">
+                        <option value="">Todos los estatus</option>
+                        {% for status in status_list %}
+                            <option value="{{ status.id }}" 
+                                    {% if status.id == status_filter_int %}selected{% endif %}>
+                                {{ status.estatus }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select class="form-select" name="year" style="max-width: 150px;">
+                        <option value="">Todos los años</option>
+                        {% for year in years_list %}
+                            <option value="{{ year }}" 
+                                    {% if year == year_filter_int %}selected{% endif %}>
+                                {{ year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="col-md-4 text-end">
+            {% block filter_actions %}
+                <button class="btn btn-success me-2" type="button" data-bs-toggle="modal" data-bs-target="#newPaperModal">
+                    <i class="fas fa-plus"></i> Nuevo paper
+                </button>
+                <button class="btn btn-info" type="button" onclick="generateReport()">
+                    <i class="fas fa-chart-bar"></i> Generar reporte
+                </button>
+            {% endblock %}
+        </div>
+    </div>
+</div>

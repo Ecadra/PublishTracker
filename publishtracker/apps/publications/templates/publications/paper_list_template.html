@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Publish Tracker - Lista de Paperes{% endblock %}
+
+{% block extra_css %}
+    <!-- CSS adicional específico de esta vista -->
+{% endblock %}
+
+{% block content %}
+  <div class="container-fluid">
+    <!-- Header ya está incluido en base.html vía partial, así que lo omitimos aquí -->
+
+    <!-- Search and Filters -->
+    <div class="filters-section">
+      <div class="row">
+        <div class="col-md-8">
+          <form method="GET" class="d-flex">
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="fas fa-search"></i>
+              </span>
+              <input type="text" 
+                     class="form-control" 
+                     name="search" 
+                     value="{{ search_query }}" 
+                     placeholder="Buscar por título, DOI o revista...">
+              <select class="form-select" name="status" style="max-width: 200px;">
+                <option value="">Todos los estatus</option>
+                {% for status in status_list %}
+                  <option value="{{ status.id }}" 
+                          {% if status.id == status_filter_int %}selected{% endif %}>
+                    {{ status.estatus }}
+                  </option>
+                {% endfor %}
+              </select>
+              <select class="form-select" name="year" style="max-width: 150px;">
+                <option value="">Todos los años</option>
+                {% for year in years_list %}
+                  <option value="{{ year }}" 
+                          {% if year == year_filter_int %}selected{% endif %}>
+                    {{ year }}
+                  </option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-primary" type="submit">
+                <i class="fas fa-filter"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="col-md-4 text-end">
+          <button class="btn btn-success me-2" type="button" data-bs-toggle="modal" data-bs-target="#newPaperModal">
+            <i class="fas fa-plus"></i> Nuevo paper
+          </button>
+          <button class="btn btn-info" type="button" onclick="generateReport()">
+            <i class="fas fa-chart-bar"></i> Generar reporte
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="results-summary">
+      <p class="text-muted">
+        <i class="fas fa-info-circle"></i>
+        Mostrando {{ papers.start_index }}-{{ papers.end_index }} de {{ total_papers }} paperes
+      </p>
+    </div>
+
+    <!-- Papers Table -->
+    <div class="table-section">
+      <div class="table-responsive">
+        <table class="table table-hover papers-table">
+          <thead class="table-header">
+            <tr>
+              <th>Título</th>
+              <th>DOI</th>
+              <th>Revista</th>
+              <th>Vol/No/Año</th>
+              <th>Autor principal</th>
+              <th>Estatus</th>
+              <th>Total citas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for paper in papers %}
+            <tr class="paper-row">
+              <td class="title-cell">
+                <div class="paper-title" title="{{ paper.titulo }}">
+                  {{ paper.titulo_corto }}
+                </div>
+                {% if paper.recibio_apoyo_seciti %}
+                <span class="badge bg-info">SECITI</span>
+                {% endif %}
+              </td>
+              <td class="doi-cell">
+                {% if paper.doi %}
+                <a href="{{ paper.doi_url }}" target="_blank" class="doi-link">
+                  {{ paper.doi|truncatechars:25 }}
+                  <i class="fas fa-external-link-alt"></i>
+                </a>
+                {% else %}
+                <span class="text-muted">Sin DOI</span>
+                {% endif %}
+              </td>
+              <td class="journal-cell">
+                {{ paper.edicion.revista.nombre|truncatechars:30 }}
+              </td>
+              <td class="volume-cell">
+                <div class="volume-info">
+                  {% if paper.edicion.volumen %}
+                  <span class="volume">Vol. {{ paper.edicion.volumen }}</span>
+                  {% endif %}
+                  {% if paper.edicion.numero %}
+                  <span class="number">No. {{ paper.edicion.numero }}</span>
+                  {% endif %}
+                  <span class="year">{{ paper.anio_publicacion }}</span>
+                </div>
+              </td>
+              <td class="author-cell">
+                {% if paper.autores_ordenados %}
+                <div class="author-info">
+                  <strong>{{ paper.autores_ordenados.0.autor.nombre|truncatechars:20 }}</strong>
+                  {% if paper.autores_ordenados|length > 1 %}
+                  <small class="text-muted">+{{ paper.autores_ordenados|length|add:"-1" }} más</small>
+                  {% endif %}
+                </div>
+                {% else %}
+                <span class="text-muted">Sin autores</span>
+                {% endif %}
+              </td>
+              <td class="status-cell">
+                <span class="status-badge status-{{ paper.estatus_publicacion.estatus|slugify }}">
+                  {{ paper.estatus_publicacion.estatus }}
+                </span>
+              </td>
+              <td class="citations-cell">
+                <span class="citations-count">{{ paper.total_citas }}</span>
+              </td>
+              <td class="actions-cell">
+                <div class="action-buttons">
+                  <button class="btn btn-sm btn-outline-primary" title="Ver detalles"
+                    onclick="viewPaper({{ paper.id }})">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" title="Editar" onclick="editPaper({{ paper.id }})">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                      data-bs-toggle="dropdown">
+                      <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="#"><i class="fas fa-download"></i> Exportar</a></li>
+                      <li><a class="dropdown-item" href="#"><i class="fas fa-share"></i> Compartir</a></li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash"></i> Eliminar</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center empty-state">
+                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No se encontraron paperes que coincidan con los criterios de búsqueda.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if papers.has_other_pages %}
+    <nav aria-label="Paginación de paperes" class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if papers.has_previous %}
+        <li class="page-item">
+          <a class="page-link"
+            href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+            <i class="fas fa-angle-double-left"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link"
+            href="?page={{ papers.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+            <i class="fas fa-angle-left"></i>
+          </a>
+        </li>
+        {% endif %}
+
+        {% for num in papers.paginator.page_range %}
+          {% if papers.number == num %}
+            <li class="page-item active">
+              <span class="page-link">{{ num }}</span>
+            </li>
+          {% elif num > papers.number|add:'-3' and num < papers.number|add:'3' %}
+            <li class="page-item">
+              <a class="page-link"
+                href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+                {{ num }}
+              </a>
+            </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if papers.has_next %}
+        <li class="page-item">
+          <a class="page-link"
+            href="?page={{ papers.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+            <i class="fas fa-angle-right"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link"
+            href="?page={{ papers.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+            <i class="fas fa-angle-double-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block modals %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/paper_list_js.js' %}"></script>
+  <script>
+    function generateReport() {
+      alert("Función de generación de reporte aún no implementada.");
+    }
+    function viewPaper(id) {
+      alert("Ver detalles del paper ID: " + id);
+    }
+    function editPaper(id) {
+      alert("Editar paper ID: " + id);
+    }
+  </script>
+{% endblock %}
