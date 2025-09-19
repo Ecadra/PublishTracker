@@ -1,11 +1,13 @@
 # paper_list_view/views.py
+import json
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
-from django.http import JsonResponse
 from publications.models import Paper
-from authors.models import PaperAutor, Autor
-
+from authors.models import PaperAutor
+from .models import PalabraClave
+from django.views.decorators.http import require_http_methods
 def paper_list_view(request):
     """
     Vista para mostrar la lista de papers con filtros y paginación
@@ -79,7 +81,17 @@ def paper_list_view(request):
         'year_filter_int': year_filter_int,      # Agregar versión convertida
         'status_list': status_list,
         'years_list': years_list,
-        'total_papers': papers_query.count()
+        'total_papers': papers_query.count(),
+        'palabras_clave_json': json.dumps(list(PalabraClave.objects.all().values('id', 'nombre')))
     }
     
     return render(request, 'publications/paper_list_template.html', context)
+@require_http_methods(["GET"])
+def get_palabras_clave(request):
+    """API para obtener todas las palabras clave disponibles"""
+    try:
+        palabras = PalabraClave.objects.all().values('id', 'nombre')
+        palabras_list = list(palabras)
+        return JsonResponse({'success': True, 'palabras_clave': palabras_list})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

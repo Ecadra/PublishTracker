@@ -139,24 +139,21 @@ class PaperAutor(models.Model):
         verbose_name="Paper"
     )
     autor = models.ForeignKey(Autor, on_delete=models.CASCADE, verbose_name="Autor")
-    orden_autor = models.PositiveIntegerField(
+    orden_autor = models.PositiveIntegerField(default=1,
         verbose_name="Orden del Autor",
         help_text="Posición del autor en la lista (1 = primer autor)"
     )
     rol_autor = models.ForeignKey(RolAutor, on_delete=models.CASCADE, verbose_name="Rol del Autor")
     
     class Meta:
-        managed=True
-        verbose_name = "Autoría de Paper"
-        verbose_name_plural = "Autorías de Papers"
-        constraints = [
-            models.UniqueConstraint(fields=['paper', 'autor'], name='unique_paper_autor'),
-            models.UniqueConstraint(fields=['paper', 'orden_autor'], name='unique_paper_orden_autor')
-        ]
-        ordering = ['paper', 'orden_autor']
-    
+        managed = True
+        verbose_name = "Autor del Paper"
+        verbose_name_plural = "Autores del Paper"
+        ordering = ['orden_autor']
+        unique_together = ['paper', 'autor']
+
     def __str__(self):
-        return f"{self.paper} - {self.autor.nombre} (#{self.orden_autor})"
+        return f"{self.autor.nombre} - {self.paper.titulo}"
     
     def set_orden_autor(self, orden):
         if orden > 0:

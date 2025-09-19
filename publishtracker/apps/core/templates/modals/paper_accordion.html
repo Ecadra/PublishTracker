@@ -1,0 +1,297 @@
+<!-- publishtracker/templates/modals/paper_accordion.html -->
+<div class="accordion" id="newPaperAccordion">
+  <!-- Información Básica -->
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingOne">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne"
+        aria-expanded="true" aria-controls="collapseOne">
+        Información Básica
+      </button>
+    </h2>
+    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne"
+      data-bs-parent="#newPaperAccordion">
+      <div class="accordion-body">
+        <div class="mb-3">
+          <label for="tituloPaper" class="form-label">Título</label>
+          <input type="text" class="form-control" id="tituloPaper" name="titulo">
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="anioPublicacion" class="form-label">Año de publicación</label>
+            <input type="number" class="form-control" id="anioPublicacion" name="anio_publicacion" min="1900"
+              max="2030">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="estatusPublicacion" class="form-label">Estatus de publicación</label>
+            <select class="form-select" id="estatusPublicacion" name="estatus_publicacion">
+              <option value="">Seleccionar</option>
+              {% for estatus in estatus_publicaciones %}
+              <option value="{{ estatus.id }}">{{ estatus.estatus }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="apoyoSECITI" name="recibio_apoyo_seciti">
+          <label class="form-check-label" for="apoyoSECITI">¿Recibió apoyo del SECITI?</label>
+        </div>
+        <div class="mb-3">
+          <label for="revistaSelect" class="form-label">Revista</label>
+          <select class="form-select" id="revistaSelect" name="revista">
+            <option value="">Seleccionar</option>
+            {% for revista in revistas %}
+            <option value="{{ revista.id }}">{{ revista.nombre }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+            onclick="openDynamicModal('Añadir Revista', '<p>Formulario para añadir revista aquí.</p>', 'md')">+ Añadir
+            revista</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalles del Paper -->
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingTwo">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+        aria-expanded="false" aria-controls="collapseTwo">
+        Detalles del Paper
+      </button>
+    </h2>
+    <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo"
+      data-bs-parent="#newPaperAccordion">
+      <div class="accordion-body">
+        <div class="mb-3">
+          <label for="doiPaper" class="form-label">DOI</label>
+          <input type="text" class="form-control" id="doiPaper" name="doi">
+        </div>
+        <div class="mb-3">
+          <label for="urlCita" class="form-label">URL de cita</label>
+          <input type="url" class="form-control" id="urlCita" name="url_cita">
+        </div>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="totalCitas" class="form-label">Total de citas</label>
+            <input type="number" class="form-control" id="totalCitas" name="total_citas" min="0">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="paginaInicio" class="form-label">Página de inicio</label>
+            <input type="number" class="form-control" id="paginaInicio" name="pagina_inicio" min="1">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="paginaFin" class="form-label">Página de fin</label>
+            <input type="number" class="form-control" id="paginaFin" name="pagina_fin" min="1">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="objetivoPaper" class="form-label">Objetivo</label>
+          <textarea class="form-control" id="objetivoPaper" name="objetivo" rows="2"></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="descripcionPaper" class="form-label">Descripción</label>
+          <textarea class="form-control" id="descripcionPaper" name="descripcion" rows="2"></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="abstractPaper" class="form-label">Abstract</label>
+          <textarea class="form-control" id="abstractPaper" name="abstract" rows="3"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Autores del Paper -->
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingThree">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree"
+        aria-expanded="false" aria-controls="collapseThree">
+        Autores del Paper
+      </button>
+    </h2>
+    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree"
+      data-bs-parent="#newPaperAccordion">
+      <div class="accordion-body">
+        <!-- Buscador de autores -->
+        <div class="mb-3">
+          <label for="buscarAutor" class="form-label">Buscar autor por nombre o ORCID</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="buscarAutor" placeholder="Nombre o ORCID...">
+            <button class="btn btn-outline-secondary" type="button" onclick="buscarAutorLocal()">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabla de autores disponibles -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <h6>Autores Disponibles</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>ORCID</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="autoresDisponibles">
+                  {% for autor in autores %}
+                  <tr data-autor-id="{{ autor.id }}" data-autor-nombre="{{ autor.nombre }}"
+                    data-autor-orcid="{{ autor.orcid }}">
+                    <td>{{ autor.nombre }}</td>
+                    <td>{{ autor.orcid }}</td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-primary add-autor-btn"
+                        onclick="agregarAutorSeleccionadoLocal({{ autor.id }}, '{{ autor.nombre|escapejs }}', '{{ autor.orcid|escapejs }}')">
+                        <i class="fas fa-plus"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="3" class="text-center">No hay autores disponibles</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tabla de autores seleccionados -->
+          <script type="application/json" id="rolesJson">
+              {{ roles_json|safe }}
+              window.palabrasClaveIniciales = {{ palabras_clave_json|safe }};
+          </script>
+
+          <div class="col-md-6">
+            <h6>Autores Seleccionados</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>ORCID</th>
+                    <th>Orden</th>
+                    <th>Rol</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="autoresSeleccionados">
+                  <!-- Aquí se añadirán los autores seleccionados -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campo oculto para almacenar autores seleccionados -->
+        <input type="hidden" id="autoresSeleccionadosData" name="autores_seleccionados" value="[]">
+      </div>
+    </div>
+  </div>
+  <!-- Palabras Clave -->
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingFour">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+            Palabras Clave
+        </button>
+    </h2>
+    <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#newPaperAccordion">
+        <div class="accordion-body">
+            <div class="mb-3">
+                <label for="palabrasClaveInput" class="form-label">Agregar palabra clave</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="palabrasClaveInput" placeholder="Escribe una palabra clave">
+                    <button class="btn btn-outline-secondary" type="button" onclick="agregarNuevaPalabraClave()">
+                        <i class="fas fa-plus"></i> Agregar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Contenedor para palabras clave seleccionadas -->
+            <div id="palabrasClaveSeleccionadas" class="d-flex flex-wrap gap-2 mb-3">
+                <!-- Aquí se mostrarán las palabras clave seleccionadas -->
+            </div>
+            
+            <!-- Contenedor para palabras clave disponibles -->
+            <div>
+                <h6>Palabras Clave Disponibles:</h6>
+                <div id="palabrasClaveDisponibles" class="d-flex flex-wrap gap-2">
+                    <!-- Aquí se mostrarán las palabras clave disponibles -->
+                </div>
+            </div>
+            
+            <!-- Campo oculto para almacenar palabras clave seleccionadas -->
+            <input type="hidden" id="palabrasClaveData" name="palabras_clave_seleccionadas" value="[]">
+        </div>
+    </div>
+</div>
+  <!-- Programas y Ejes -->
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingFive">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive"
+        aria-expanded="false" aria-controls="collapseFive">
+        Programas y Ejes
+      </button>
+    </h2>
+    <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive"
+      data-bs-parent="#newPaperAccordion">
+      <div class="accordion-body">
+        <div class="mb-3">
+          <label for="programaSECITI" class="form-label">Programa SECITI</label>
+          <select class="form-select" id="programaSECITI" name="programa_seciti">
+            <option value="">Seleccionar</option>
+            {% for programa in programas_seciti %}
+            <option value="{{ programa.id }}">{{ programa.nombre }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+            onclick="openDynamicModal('Añadir Programa', '<p>Formulario para añadir programa aquí.</p>', 'md')">+ Añadir
+            programa</button>
+        </div>
+        <div class="mb-3">
+          <label for="ejeSECITHI" class="form-label">Eje SECITHI</label>
+          <select class="form-select" id="ejeSECITHI" name="eje_secithi">
+            <option value="">Seleccionar</option>
+            {% for eje in ejes_secithi %}
+            <option value="{{ eje.id }}">{{ eje.nombre }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+            onclick="openDynamicModal('Añadir Eje', '<p>Formulario para añadir eje aquí.</p>', 'md')">+ Añadir
+            eje</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Archivos -->
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingSix">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix"
+        aria-expanded="false" aria-controls="collapseSix">
+        Archivos del Paper
+      </button>
+    </h2>
+    <div id="collapseSix" class="accordion-collapse collapse" aria-labelledby="headingSix"
+      data-bs-parent="#newPaperAccordion">
+      <div class="accordion-body">
+        <div class="mb-3">
+          <label for="archivoPaper" class="form-label">Paper completo</label>
+          <input class="form-control" type="file" id="archivoPaper" name="archivo_paper">
+        </div>
+        <div class="mb-3">
+          <label for="primeraPagina" class="form-label">Primera página</label>
+          <input class="form-control" type="file" id="primeraPagina" name="primera_pagina">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Botones del Modal Footer -->
+<div class="d-flex justify-content-between mt-3">
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+  <button type="button" class="btn btn-primary" onclick="guardarPaper()">Guardar Paper</button>
+</div>

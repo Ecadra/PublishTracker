@@ -145,3 +145,19 @@ class Paper(models.Model):
     @property
     def tiene_apoyo_institucional(self):
         return self.recibio_apoyo_seciti and self.programa is not None
+
+class PalabraClave(models.Model):
+    nombre = models.CharField(max_length=100, unique=True, verbose_name="Palabra Clave")
+
+class PaperPalabraClave(models.Model):
+    paper = models.ForeignKey(Paper, on_delete=models.CASCADE)
+    palabra_clave = models.ForeignKey(PalabraClave, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('paper', 'palabra_clave')
+        verbose_name = "Relación Paper-Palabra Clave"
+        verbose_name_plural = "Relaciones Paper-Palabra Clave"
+class Cita(models.Model):
+    paper = models.ForeignKey(Paper, on_delete=models.CASCADE, related_name='citas')
+    tipo_cita=models.CharField(max_length=100, verbose_name="Tipo de Cita")
+    texto_cita = models.TextField(verbose_name="Texto de la Cita")

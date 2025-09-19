@@ -50,9 +50,9 @@
           </form>
         </div>
         <div class="col-md-4 text-end">
-          <button class="btn btn-success me-2" type="button" data-bs-toggle="modal" data-bs-target="#newPaperModal">
+        <button class="btn btn-success me-2" type="button" onclick="openNewPaperModal()">
             <i class="fas fa-plus"></i> Nuevo paper
-          </button>
+        </button>
           <button class="btn btn-info" type="button" onclick="generateReport()">
             <i class="fas fa-chart-bar"></i> Generar reporte
           </button>
@@ -230,22 +230,4 @@
     </nav>
     {% endif %}
   </div>
-{% endblock %}
-
-{% block modals %}
-{% endblock %}
-
-{% block extra_js %}
-  <script src="{% static 'js/paper_list_js.js' %}"></script>
-  <script>
-    function generateReport() {
-      alert("Función de generación de reporte aún no implementada.");
-    }
-    function viewPaper(id) {
-      alert("Ver detalles del paper ID: " + id);
-    }
-    function editPaper(id) {
-      alert("Editar paper ID: " + id);
-    }
-  </script>
 {% endblock %}
