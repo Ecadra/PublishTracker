@@ -136,3 +136,21 @@ body {
     filter: blur(5px);
     transition: filter 0.3s ease;
 }
+.toast {
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.toast .toast-body {
+    padding: 0.75rem 1.25rem;
+}
+
+.toast .btn-close {
+    padding: 0.75rem 0.5rem;
+}
+.bg-error{
+    background-color: #dc3545;
+}
+.bg-alert{
+    background-color: #ffc107;
+}

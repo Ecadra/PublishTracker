@@ -47,12 +47,6 @@ class Paper(models.Model):
         null=True,
         verbose_name="Programa SECITI"
     )
-    rol_participacion = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        verbose_name="Rol de Participación"
-    )
     estatus_publicacion = models.ForeignKey(
         EstatusPublicacion,
         on_delete=models.CASCADE,

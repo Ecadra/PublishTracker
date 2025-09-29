@@ -1,5 +1,5 @@
 <!-- publishtracker/templates/modals/paper_accordion.html -->
-<div class="accordion" id="newPaperAccordion">
+<div class="accordion form" id="newPaperAccordion">
   <!-- Información Básica -->
   <div class="accordion-item">
     <h2 class="accordion-header" id="headingOne">
@@ -44,8 +44,22 @@
             {% endfor %}
           </select>
           <button type="button" class="btn btn-outline-primary btn-sm mt-1"
-            onclick="openDynamicModal('Añadir Revista', '<p>Formulario para añadir revista aquí.</p>', 'md')">+ Añadir
+            onclick="pushModalView('Añadir Revista', '<p>Formulario para añadir revista aquí.</p>', 'md')">+ Añadir
             revista</button>
+        </div>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="volumenRevista" class="form-label">Volumen</label>
+            <input type="text" class="form-control" id="volumenRevista" name="volumen">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="numeroRevista" class="form-label">Número</label>
+            <input type="text" class="form-control" id="numeroRevista" name="numero">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="indiceRevista" class="form-label">Índice de Revista</label>
+            <input type="text" class="form-control" id="indiceRevista" name="indice_revista">
+          </div>
         </div>
       </div>
     </div>
@@ -115,11 +129,13 @@
         <div class="mb-3">
           <label for="buscarAutor" class="form-label">Buscar autor por nombre o ORCID</label>
           <div class="input-group">
-            <input type="text" class="form-control" id="buscarAutor" placeholder="Nombre o ORCID...">
+            <input type="text" class="form-control" id="buscarAutor" placeholder="Nombre o ORCID..." name="buscar_autor">
             <button class="btn btn-outline-secondary" type="button" onclick="buscarAutorLocal()">
               <i class="fas fa-search"></i>
             </button>
           </div>
+          <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+            onclick="openNewAutorModal()"> + Añadir un autor</button>
         </div>
 
         <!-- Tabla de autores disponibles -->
@@ -202,7 +218,7 @@
             <div class="mb-3">
                 <label for="palabrasClaveInput" class="form-label">Agregar palabra clave</label>
                 <div class="input-group">
-                    <input type="text" class="form-control" id="palabrasClaveInput" placeholder="Escribe una palabra clave">
+                    <input type="text" class="form-control" id="palabrasClaveInput" placeholder="Escribe una palabra clave" name="palabra_clave_txt">
                     <button class="btn btn-outline-secondary" type="button" onclick="agregarNuevaPalabraClave()">
                         <i class="fas fa-plus"></i> Agregar
                     </button>
@@ -247,7 +263,7 @@
             {% endfor %}
           </select>
           <button type="button" class="btn btn-outline-primary btn-sm mt-1"
-            onclick="openDynamicModal('Añadir Programa', '<p>Formulario para añadir programa aquí.</p>', 'md')">+ Añadir
+            onclick="pushModalView('Añadir Programa', '<p>Formulario para añadir programa aquí.</p>', 'md')">+ Añadir
             programa</button>
         </div>
         <div class="mb-3">
@@ -259,7 +275,7 @@
             {% endfor %}
           </select>
           <button type="button" class="btn btn-outline-primary btn-sm mt-1"
-            onclick="openDynamicModal('Añadir Eje', '<p>Formulario para añadir eje aquí.</p>', 'md')">+ Añadir
+            onclick="pushModalView('Añadir Eje', '<p>Formulario para añadir eje aquí.</p>', 'md')">+ Añadir
             eje</button>
         </div>
       </div>

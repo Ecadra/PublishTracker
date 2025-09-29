@@ -1,0 +1,86 @@
+<div class="container-fluid p-4">
+    <form id="newAuthorForm" class="needs-validation" novalidate>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="form-floating">
+                    <input type="text" 
+                           class="form-control" 
+                           id="nombreAutor" 
+                           name="nombre" 
+                           placeholder="Nombre completo"
+                           required
+                           pattern="^[A-Za-záéíóúñÁÉÍÓÚÑ\s]+$">
+                    <label for="nombreAutor">Nombre Completo</label>
+                    <div class="invalid-feedback">
+                        Por favor ingrese un nombre válido.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="form-floating">
+                    <input type="text" 
+                           class="form-control" 
+                           id="orcidAutor" 
+                           name="orcid" 
+                           placeholder="0000-0000-0000-0000"
+                           pattern="^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$">
+                    <label for="orcidAutor">ORCID ID (Opcional)</label>
+                    <div class="invalid-feedback">
+                        El ORCID debe tener el formato: 0000-0000-0000-0000
+                    </div>
+                    <small class="form-text text-muted">
+                        Formato: 0000-0000-0000-0000
+                    </small>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Footer con botones de acción -->
+<div class="modal-footer border-top">
+    <button type="button" class="btn btn-secondary" onclick="popModalView()">
+        <i class="bi bi-arrow-left"></i> Volver
+    </button>
+    <button type="button" class="btn btn-primary" onclick="guardarAutor()">
+        <i class="bi bi-save"></i> Guardar Autor
+    </button>
+</div>
+
+<style>
+    .form-floating > .form-control:focus,
+    .form-floating > .form-control:not(:placeholder-shown) {
+        padding-top: 1.625rem;
+        padding-bottom: 0.625rem;
+    }
+
+    .roles-container {
+        background-color: var(--light-gray);
+        border-color: var(--medium-gray) !important;
+        transition: var(--transition);
+    }
+
+    .roles-container:hover {
+        border-color: var(--primary-color) !important;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .btn {
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-weight: 500;
+        transition: var(--transition);
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--box-shadow);
+    }
+</style>

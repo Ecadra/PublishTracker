@@ -4,7 +4,13 @@ from django.shortcuts import render
 from django.shortcuts import render
 from core.models import EstatusPublicacion, ProgramaSeciti, EjeSecithi
 from journals.models import Revista
-from authors.models import Autor, Rol  # Asumiendo que tienes un modelo Autor
+from authors.models import Autor, Rol, RolAutor, PaperAutor
+from publications.models import Paper
+
+def get_new_author_modal_content(request):
+    
+    return render(request, 'modals/new_author.html')
+
 
 def get_new_paper_modal_content(request):
     """
@@ -18,6 +24,5 @@ def get_new_paper_modal_content(request):
         'autores': Autor.objects.all()[:10], # Carga inicial de autores (puedes paginar o buscar vía AJAX)
         'roles_json': json.dumps(list(Rol.objects.all().values('id', 'nombre_rol', 'descripcion')))
     }
-    print("Contexto para el modal de paper:", context)  # Depuración
     return render(request, 'modals/paper_accordion.html', context)
 
