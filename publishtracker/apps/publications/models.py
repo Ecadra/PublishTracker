@@ -52,6 +52,7 @@ class Paper(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Estatus de Publicación"
     )
+    proposito = models.TextField(blank = True, null = True, verbose_name="Proposito")
     objetivo = models.TextField(blank=True, null=True, verbose_name="Objetivo")
     descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
     abstract = models.TextField(blank=True, null=True, verbose_name="Abstract")

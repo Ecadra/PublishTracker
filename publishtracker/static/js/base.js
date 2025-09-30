@@ -923,6 +923,7 @@ const PaperManager = {
       totalCitas: document.getElementById('totalCitas')?.value,
       paginaInicio: document.getElementById('paginaInicio')?.value,
       paginaFin: document.getElementById('paginaFin')?.value,
+      proposito: document.getElementById('propositoPaper')?.value,
       objetivo: document.getElementById('objetivoPaper')?.value.trim(),
       descripcion: document.getElementById('descripcionPaper')?.value.trim(),
       abstract: document.getElementById('abstractPaper')?.value.trim(),

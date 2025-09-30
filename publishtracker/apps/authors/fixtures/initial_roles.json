@@ -1,0 +1,162 @@
+[
+  {
+    "model": "authors.rol",
+    "pk": 1,
+    "fields": {
+      "nombre_rol": "Asesor (a) principal",
+      "descripcion": "Asesor o asesora principal del proyecto."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 2,
+    "fields": {
+      "nombre_rol": "Autor",
+      "descripcion": "Autor general del paper."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 3,
+    "fields": {
+      "nombre_rol": "Autor (a) para correspondencia",
+      "descripcion": "Autor designado para recibir correspondencia."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 4,
+    "fields": {
+      "nombre_rol": "Autor (a) principal",
+      "descripcion": "Autor principal del paper."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 5,
+    "fields": {
+      "nombre_rol": "Autor (a) único (a)",
+      "descripcion": "Único autor del paper."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 6,
+    "fields": {
+      "nombre_rol": "Autor de correspondencia",
+      "descripcion": "Autor encargado de la correspondencia."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 7,
+    "fields": {
+      "nombre_rol": "Co-autor (a)",
+      "descripcion": "Co-autor o co-autora del paper."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 8,
+    "fields": {
+      "nombre_rol": "Co-coordinador (a)",
+      "descripcion": "Co-coordinador o co-coordinadora del proyecto."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 9,
+    "fields": {
+      "nombre_rol": "Co-Director (a)",
+      "descripcion": "Co-director o co-directora del proyecto."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 10,
+    "fields": {
+      "nombre_rol": "Co-inventor",
+      "descripcion": "Co-inventor del desarrollo."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 11,
+    "fields": {
+      "nombre_rol": "Colaborador",
+      "descripcion": "Colaborador en el proyecto."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 12,
+    "fields": {
+      "nombre_rol": "Compilador (a)",
+      "descripcion": "Compilador o compiladora de la obra."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 13,
+    "fields": {
+      "nombre_rol": "Coordinador (a)",
+      "descripcion": "Coordinador o coordinadora del proyecto."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 14,
+    "fields": {
+      "nombre_rol": "Director (a)",
+      "descripcion": "Director o directora del proyecto."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 15,
+    "fields": {
+      "nombre_rol": "Director (a) y/o Asesor (a) principal",
+      "descripcion": "Director y/o asesor principal."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 16,
+    "fields": {
+      "nombre_rol": "Editor (a)",
+      "descripcion": "Editor o editora de la obra."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 17,
+    "fields": {
+      "nombre_rol": "Estudiante es el autor (a) principal",
+      "descripcion": "El autor principal es un estudiante."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 18,
+    "fields": {
+      "nombre_rol": "Inventor",
+      "descripcion": "Inventor del desarrollo."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 19,
+    "fields": {
+      "nombre_rol": "Líder",
+      "descripcion": "Líder del proyecto o equipo."
+    }
+  },
+  {
+    "model": "authors.rol",
+    "pk": 20,
+    "fields": {
+      "nombre_rol": "Participante",
+      "descripcion": "Participante en el proyecto."
+    }
+  }
+]

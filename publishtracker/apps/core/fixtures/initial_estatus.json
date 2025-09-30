@@ -1,0 +1,30 @@
+[
+  {
+    "model": "core.estatuspublicacion",
+    "pk": 1,
+    "fields": {
+      "estatus": "En proceso"
+    }
+  },
+  {
+    "model": "core.estatuspublicacion",
+    "pk": 2,
+    "fields": {
+      "estatus": "Enviado"
+    }
+  },
+  {
+    "model": "core.estatuspublicacion",
+    "pk": 3,
+    "fields": {
+      "estatus": "Aceptado"
+    }
+  },
+  {
+    "model": "core.estatuspublicacion",
+    "pk": 4,
+    "fields": {
+      "estatus": "Publicado"
+    }
+  }
+]

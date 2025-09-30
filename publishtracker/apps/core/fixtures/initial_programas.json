@@ -1,0 +1,122 @@
+[
+  {
+    "model": "core.programaseciti",
+    "pk": 1,
+    "fields": {
+      "nombre": "Fondo institucional",
+      "descripcion": "Fondo para apoyar investigación institucional."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 2,
+    "fields": {
+      "nombre": "Fondo mixto",
+      "descripcion": "Fondo para proyectos conjuntos."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 3,
+    "fields": {
+      "nombre": "Fondo mixto hidalgo",
+      "descripcion": "Fondo mixto específico para Hidalgo."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 4,
+    "fields": {
+      "nombre": "Fondo sectorial",
+      "descripcion": "Fondo sectorial general."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 5,
+    "fields": {
+      "nombre": "Fondo sectorial convocatoria de investigación científica",
+      "descripcion": "Fondo para investigación científica."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 6,
+    "fields": {
+      "nombre": "Fondo sectorial de investigación para la educación",
+      "descripcion": "Fondo para investigación educativa."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 7,
+    "fields": {
+      "nombre": "Beca al Extranjero",
+      "descripcion": "Beca para estudios en el extranjero."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 8,
+    "fields": {
+      "nombre": "Beca Mixta",
+      "descripcion": "Beca que combina apoyos nacionales y extranjeros."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 9,
+    "fields": {
+      "nombre": "Beca Nacional",
+      "descripcion": "Beca para estudios dentro del país."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 10,
+    "fields": {
+      "nombre": "Estancias Posdoctorales",
+      "descripcion": "Apoyo para estancias posdoctorales."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 11,
+    "fields": {
+      "nombre": "Estancias Sabaticas",
+      "descripcion": "Apoyo para estancias sabáticas."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 12,
+    "fields": {
+      "nombre": "Formación de Alto Nivel para la Administración Pública",
+      "descripcion": "Programa de formación para servidores públicos."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 13,
+    "fields": {
+      "nombre": "Fortalecimiento Académico para Indígenas",
+      "descripcion": "Programa de apoyo académico para comunidades indígenas."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 14,
+    "fields": {
+      "nombre": "Jóvenes Talentos",
+      "descripcion": "Programa para jóvenes con alto potencial."
+    }
+  },
+  {
+    "model": "core.programaseciti",
+    "pk": 15,
+    "fields": {
+      "nombre": "Otro",
+      "descripcion": "Otro tipo de programa SECITI."
+    }
+  }
+]
