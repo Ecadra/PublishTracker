@@ -1,10 +1,11 @@
 from django.urls import path
-from .views import get_new_paper_modal_content, get_new_author_modal_content
+from . import views
 
 app_name = 'core'
 
 urlpatterns = [
-
-    path('modal/new-paper/', get_new_paper_modal_content, name='modal_new_paper_content'),
-    path('modal/new-author/',get_new_author_modal_content, name='modal_new_author_content')
+    path('modal/new-program/', views.modal_nuevo_programa, name='modal_nuevo_programa'),
+    path('modal/new-axis/', views.modal_nuevo_eje, name='modal_nuevo_eje'),
+    path('create-program/', views.guardar_programa, name='guardar_programa'),
+    path('create-axis/', views.guardar_eje, name='guardar_eje'),
 ]

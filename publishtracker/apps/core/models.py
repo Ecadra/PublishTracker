@@ -53,7 +53,6 @@ class EstatusPublicacion(models.Model):
         """Verifica si hay descripción válida"""
         return bool(self.descripcion and self.descripcion.strip())
 
-
 class ProgramaSeciti(models.Model):
     """Modelo para representar programas SECITI"""
     nombre = models.CharField(max_length=200, unique=True, verbose_name="Nombre del Programa")
@@ -106,3 +105,4 @@ class EjeSecithi(models.Model):
         if self.descripcion:
             return self.descripcion[:100] + "..." if len(self.descripcion) > 100 else self.descripcion
         return "Sin descripción"
+

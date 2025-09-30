@@ -1,0 +1,109 @@
+<form id="formNuevaRevista">
+  {% csrf_token %}
+
+  <div class="mb-3">
+    {{ form.nombre.label_tag }}
+    {{ form.nombre }}
+    <div id="error-nombre" class="text-danger"></div>
+    {% if form.nombre.errors %}
+      <div class="text-danger">{{ form.nombre.errors }}</div>
+    {% endif %}
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      {{ form.issn_impreso.label_tag }}
+      {{ form.issn_impreso }}
+      <div id="error-issn_impreso" class="text-danger"></div>
+      {% if form.issn_impreso.errors %}
+        <div class="text-danger">{{ form.issn_impreso.errors }}</div>
+      {% endif %}
+    </div>
+    <div class="col-md-6 mb-3">
+      {{ form.issn_electronico.label_tag }}
+      {{ form.issn_electronico }}
+      <div id="error-issn_electronico" class="text-danger"></div>
+      {% if form.issn_electronico.errors %}
+        <div class="text-danger">{{ form.issn_electronico.errors }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mb-3">
+    {{ form.factor_impacto.label_tag }}
+    {{ form.factor_impacto }}
+    <div id="error-factor_impacto" class="text-danger"></div>
+    {% if form.factor_impacto.errors %}
+      <div class="text-danger">{{ form.factor_impacto.errors }}</div>
+    {% endif %}
+  </div>
+
+  <div class="mb-3">
+    {{ form.editorial.label_tag }}
+    {{ form.editorial }}
+    <div id="error-editorial" class="text-danger"></div>
+    {% if form.editorial.errors %}
+      <div class="text-danger">{{ form.editorial.errors }}</div>
+    {% endif %}
+    <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+            onclick="cargarContenidoModal('/journals/modal/new-publisher/', 'Añadir Nueva Editorial', 'md')">+ Añadir editorial</button>
+  </div>
+
+  <div class="mb-3">
+    {{ form.url.label_tag }}
+    {{ form.url }}
+    <div id="error-url" class="text-danger"></div>
+    {% if form.url.errors %}
+      <div class="text-danger">{{ form.url.errors }}</div>
+    {% endif %}
+  </div>
+
+  <div class="mb-3">
+    {{ form.pais_publicacion.label_tag }}
+    {{ form.pais_publicacion }}
+    <div id="error-pais_publicacion" class="text-danger"></div>
+    {% if form.pais_publicacion.errors %}
+      <div class="text-danger">{{ form.pais_publicacion.errors }}</div>
+    {% endif %}
+    <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+            onclick="cargarContenidoModal('/journals/modal/new-country/', 'Añadir Nuevo País', 'md')">+ Añadir país</button>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      {{ form.categoria.label_tag }}
+      {{ form.categoria }}
+      <div id="error-categoria" class="text-danger"></div>
+      {% if form.categoria.errors %}
+        <div class="text-danger">{{ form.categoria.errors }}</div>
+      {% endif %}
+      <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+              onclick="cargarContenidoModal('/journals/modal/new-category/', 'Añadir Nueva Categoría', 'md')">+ Añadir categoría</button>
+    </div>
+    <div class="col-md-6 mb-3">
+      {{ form.ambito.label_tag }}
+      {{ form.ambito }}
+      <div id="error-ambito" class="text-danger"></div>
+      {% if form.ambito.errors %}
+        <div class="text-danger">{{ form.ambito.errors }}</div>
+      {% endif %}
+      <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+              onclick="cargarContenidoModal('/journals/modal/new-scope/', 'Añadir Nuevo Ámbito', 'md')">+ Añadir ámbito</button>
+    </div>
+  </div>
+
+  <div class="mb-3 form-check">
+    {{ form.dirigido_cuerpo_academico }}
+    {{ form.dirigido_cuerpo_academico.label_tag }}
+    <div id="error-dirigido_cuerpo_academico" class="text-danger"></div>
+    {% if form.dirigido_cuerpo_academico.errors %}
+      <div class="text-danger">{{ form.dirigido_cuerpo_academico.errors }}</div>
+    {% endif %}
+  </div>
+
+  <!-- Botones del footer del modal -->
+  <div class="d-flex justify-content-between mt-3">
+    <button type="button" class="btn btn-secondary" onclick="regresarAVistaAnterior()">← Volver</button>
+    <button type="button" class="btn btn-primary" onclick="guardarRevista()">Guardar Revista</button>
+  </div>
+</form>

@@ -1,883 +1,1720 @@
 /**
- * =========================
- * 1. UTILIDADES GENERALES
- * =========================
+ * PublishTracker - Sistema de Gestión de Publicaciones Académicas
+ * Versión refactorizada con JSDoc completo y mejores prácticas
+ * @author Edwin Campos Dragusin
+ * @version 2.0.0
  */
 
+// =============================================================================
+// MÓDULO DE UTILIDADES
+// =============================================================================
+
 /**
- * Obtiene el valor de una cookie por nombre.
- * @param {string} name - Nombre de la cookie.
- * @returns {string|null} Valor de la cookie o null si no existe.
+ * Módulo de utilidades generales para operaciones comunes
+ * @namespace Utils
  */
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
+const Utils = {
+  /**
+   * Obtiene el valor de una cookie por su nombre
+   * @param {string} name - Nombre de la cookie a buscar
+   * @returns {string|null} Valor decodificado de la cookie o null si no existe
+   * @example
+   * const token = Utils.getCookie('csrftoken');
+   */
+  getCookie(name) {
+    if (!document.cookie) return null;
+
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(`${name}=`)) {
+        return decodeURIComponent(cookie.substring(name.length + 1));
+      }
     }
-    return cookieValue;
-}
+    return null;
+  },
 
-/**
- * Muestra una alerta tipo toast (Bootstrap) con mensaje personalizado.
- * @param {string} message - Mensaje a mostrar.
- * @param {string} [type='info'] - Clase de color Bootstrap (success, danger, etc.).
- * @param {number} [duration=3000] - Tiempo en ms antes de desaparecer.
- */
-function showCustomAlert(message, type = 'info', duration = 3000) {
-    let alertContainer = document.getElementById('custom-alert-container');
-    if (!alertContainer) {
-        alertContainer = document.createElement('div');
-        alertContainer.id = 'custom-alert-container';
-        alertContainer.className = 'position-fixed top-0 end-0 p-3';
-        alertContainer.style.zIndex = '2000';
-        document.body.appendChild(alertContainer);
+  /**
+   * Muestra un mensaje toast de Bootstrap
+   * @param {string} message - Mensaje a mostrar
+   * @param {('info'|'success'|'warning'|'danger')} [type='info'] - Tipo de alerta
+   * @param {number} [duration=3000] - Duración en milisegundos
+   * @example
+   * Utils.showToast('Guardado exitoso', 'success', 2000);
+   */
+  showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('custom-alert-container');
+
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'custom-alert-container';
+      container.className = 'position-fixed top-0 end-0 p-3';
+      container.style.zIndex = '2000';
+      document.body.appendChild(container);
     }
 
     const alertId = `alert-${Date.now()}`;
-    const alertContent = `
-        <div id="${alertId}" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body bg-${type} text-white rounded-start">${message}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
+    container.insertAdjacentHTML('beforeend', `
+      <div id="${alertId}" class="toast align-items-center border-0" role="alert">
+        <div class="d-flex">
+          <div class="toast-body bg-${type} text-white rounded-start">${message}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                  data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
-    `;
-    alertContainer.insertAdjacentHTML('beforeend', alertContent);
+      </div>
+    `);
 
     const toastElement = document.getElementById(alertId);
     const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: duration });
 
     toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
     toast.show();
-}
+  },
+
+  /**
+   * Valida que un valor sea un número válido y opcionalmente mayor que un mínimo
+   * @param {*} value - Valor a validar
+   * @param {number} [min=0] - Valor mínimo permitido
+   * @returns {boolean} true si el valor es un número válido >= min
+   * @example
+   * Utils.isValidNumber('42', 0); // true
+   * Utils.isValidNumber('-5', 0); // false
+   */
+  isValidNumber(value, min = 0) {
+    const num = Number(value);
+    return !isNaN(num) && num >= min;
+  },
+
+  /**
+   * Valida que un rango de valores sea consistente (inicio <= fin)
+   * @param {*} start - Valor de inicio
+   * @param {*} end - Valor de fin
+   * @returns {boolean} true si ambos son números válidos y start <= end
+   * @example
+   * Utils.isValidRange(10, 20); // true
+   * Utils.isValidRange(20, 10); // false
+   */
+  isValidRange(start, end) {
+    return this.isValidNumber(start, 1) &&
+      this.isValidNumber(end, 1) &&
+      Number(start) <= Number(end);
+  }
+};
+
+// =============================================================================
+// MÓDULO DE GESTIÓN DE MODALES
+// =============================================================================
 
 /**
- * Agrega/elimina clase 'loading' para indicar carga en un elemento.
+ * Gestiona el sistema de modales dinámicos con pila de navegación
+ * Permite cargar contenido AJAX, navegar entre vistas y mantener estado
+ * @namespace ModalManager
  */
-function showLoading(element) { element.classList.add('loading'); }
-function hideLoading(element) { element.classList.remove('loading'); }
+const ModalManager = {
+  /**
+   * Pila de vistas del modal (historial de navegación)
+   * @type {Array<{title: string, content: string, footer: string, size: string, formData: Object}>}
+   */
+  stack: [],
 
-/**
- * =========================
- * 2. INICIALIZACIÓN DEL DOM
- * =========================
- */
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Configuración global accesible desde toda la app
-    window.PublishTracker = {
-        csrfToken: getCookie('csrftoken'),
-        baseUrl: window.location.origin,
-        modalStack: []
-    };
-
-    // Auto-submit en formularios de filtros
-    document.querySelectorAll('select[name="status"], select[name="year"]').forEach(select => {
-        select.addEventListener('change', () => select.closest('form').submit());
-    });
-
-    // Inicializar tooltips de Bootstrap
-    [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].forEach(el =>
-        new bootstrap.Tooltip(el)
-    );
-});
-
-/**
- * =========================
- * 3. MANEJO DE MODALES
- * =========================
- */
-
-/**
- * Carga contenido remoto y lo muestra como una nueva vista en el modal dinámico (usando pila).
- * @param {string} url - URL del contenido a cargar.
- * @param {string} title - Título de la nueva vista.
- * @param {string} [size=''] - Tamaño del modal ('sm', 'lg', 'xl', etc.).
- */
-async function loadModalContent(url, title, size = '') {
+  /**
+   * Carga contenido dinámico en el modal mediante AJAX
+   * @async
+   * @param {string} url - URL del endpoint que devuelve el contenido
+   * @param {string} title - Título del modal
+   * @param {string} [size=''] - Tamaño del modal ('sm', 'lg', 'xl')
+   * @param {string} [footer=''] - HTML del footer del modal
+   * @param {boolean} [saveState=true] - Si debe guardar el estado del formulario actual
+   * @returns {Promise<void>}
+   * @example
+   * await ModalManager.loadContent('/modal/form/', 'Nuevo Registro', 'lg');
+   */
+  async loadContent(url, title, size = '', footer = '', saveState = true,onRendered=null) {
     const modal = document.getElementById('dynamicModal');
     if (!modal) {
-        showCustomAlert('Error: Modal no encontrado.', 'danger');
-        return;
+      Utils.showToast('Error: Modal no encontrado.', 'danger');
+      return;
     }
 
-    // Mostrar indicador de carga DIRECTAMENTE en el cuerpo del modal (sin usar la pila)
-    const loadingContent = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
-            <p class="mt-2">Cargando contenido...</p>
+    if (saveState && this.stack.length > 0) {
+      this._backupFormData();
+    }
+
+    this._showLoadingState();
+    this._showModal(modal);
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+
+      if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+
+      const content = await response.text();
+      this.push(title, content, size, footer,onRendered);
+
+    } catch (error) {
+      console.error('Error al cargar contenido del modal:', error);
+      const errorContent = `
+        <div class="alert alert-danger">
+          <h5><i class="fas fa-exclamation-triangle"></i> Error al cargar</h5>
+          <p>No se pudo cargar el contenido. ${error.message}</p>
+          <button class="btn btn-outline-secondary btn-sm" 
+                  onclick="ModalManager.pop()">← Volver</button>
         </div>
+      `;
+      this.push(title, errorContent, size, footer);
+    }
+  },
+
+  /**
+   * Añade una nueva vista a la pila del modal y la muestra
+   * @param {string} title - Título de la vista
+   * @param {string} content - Contenido HTML de la vista
+   * @param {string} [size=''] - Tamaño del modal
+   * @param {string} [footer=''] - HTML del footer
+   * @example
+   * ModalManager.push('Mi Título', '<p>Contenido</p>', 'lg');
+   */
+  push(title, content, size = '', footer = '',onRendered=null) {
+    this.stack.push({
+      title,
+      content,
+      footer,
+      size,
+      formData: null
+    });
+
+    this._renderCurrentView().then(() => {
+      // Ejecutar callback después de renderizar
+      if (typeof onRendered === 'function') {
+        onRendered();
+      }
+    });
+    this._ensureModalVisible();
+  },
+
+  /**
+   * Regresa a la vista anterior en la pila del modal
+   * Si no hay vistas anteriores, muestra una advertencia
+   * @example
+   * ModalManager.pop(); // Vuelve atrás
+   */
+  pop() {
+    if (this.stack.length <= 1) {
+      console.warn('No hay vistas anteriores.');
+      return;
+    }
+
+    this.stack.pop();
+    this._renderCurrentView();
+  },
+
+  /**
+   * Muestra un spinner de carga en el cuerpo del modal
+   * @private
+   */
+  _showLoadingState() {
+    const loadingContent = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2">Cargando contenido...</p>
+      </div>
     `;
     document.getElementById('modalBody').innerHTML = loadingContent;
+  },
 
-    // Mostrar el modal si no está visible
+  /**
+   * Muestra el modal de Bootstrap si no está visible
+   * @private
+   * @param {HTMLElement} modal - Elemento DOM del modal
+   */
+  _showModal(modal) {
     let modalInstance = bootstrap.Modal.getInstance(modal);
     if (!modalInstance) {
-        modalInstance = new bootstrap.Modal(modal, { backdrop: true, keyboard: true });
-    }
-    modalInstance.show();
-
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-
-        const html = await response.text();
-
-        // Empujar la vista real a la pila
-        pushModalView(title, html, size, '');
-
-    } catch (error) {
-        console.error('Error al cargar contenido del modal:', error);
-
-        // Mostrar vista de error
-        const errorContent = `
-            <div class="alert alert-danger">
-                <h5><i class="fas fa-exclamation-triangle"></i> Error al cargar</h5>
-                <p>No se pudo cargar el contenido. ${error.message}</p>
-                <button class="btn btn-outline-secondary btn-sm" onclick="popModalView()">
-                    ← Volver
-                </button>
-            </div>
-        `;
-        pushModalView(title, errorContent, size, '');
-    }
-}
-/**
- * Muestra el modal dinámico (con fallback si falla Bootstrap).
- */
-function showDynamicModal() {
-    const modal = document.getElementById('dynamicModal');
-    if (!modal) {
-        showCustomAlert('Error: Modal no encontrado.', 'danger');
-        return Promise.reject(new Error('Modal element not found'));
-    }
-
-    return new Promise(resolve => {
-        try {
-            let instance = bootstrap.Modal.getInstance(modal);
-            if (!instance) instance = new bootstrap.Modal(modal, { backdrop: true, keyboard: true });
-            instance.show();
-            resolve();
-        } catch (error) {
-            console.error('⚠️ Error con Bootstrap Modal:', error);
-            // Fallback manual
-            modal.classList.add('show');
-            modal.style.display = 'block';
-            document.body.classList.add('modal-open');
-            if (!document.querySelector('.modal-backdrop')) {
-                const backdrop = document.createElement('div');
-                backdrop.className = 'modal-backdrop fade show';
-                document.body.appendChild(backdrop);
-            }
-            resolve();
-        }
-    });
-}
-
-/**
- * Abre el modal para registrar un nuevo paper.
- */
-async function openNewPaperModal() {
-    try {
-        await loadModalContent('/modal/new-paper/', 'Registrar Nuevo Paper', 'xl');
-        setTimeout(() => {
-            inicializarPalabrasClave();
-            if (typeof cargarRoles === 'function') {
-                cargarRoles().then(() => console.log('✅ Roles cargados.'));
-            }
-        }, 300);
-    } catch (error) {
-        console.error('❌ Error en openNewPaperModal:', error);
-        showCustomAlert('No se pudo abrir el formulario.', 'danger');
-    }
-}
-
-async function openNewAutorModal() {
-    // Guarda el estado actual del formulario en la pila
-    saveCurrentFormDataToStack();
-
-    try {
-        const response = await fetch('modal/new-author', {
-            method: 'GET',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        const html = await response.text();
-        pushModalView('Registrar nuevo author', html, 'md', '');
-    } catch (error) {
-        console.error('ERROR en openNewAutorModal:', error);
-        showCustomAlert('No se pudo abrir el formulario.', 'danger');
-    }
-}
-
-
-/**
- * Gestión de modales con vistas internas:
- * Esta sección permite que, desde un modal ya abierto se pueda abrir una sub-vista sin perder el estado del formulario principal y poder volver a él.
- * 
- * Primero se creará una variable global para almacenar el estado de los modales.
- * Constará del título de la vista, el html del cuerpo, el footer (opcional) y el tamaño del modal.
- * 
- */
-
-/**
- * Agrega una nueva vista al modal dinámico y la muestra, guardando el estado actual en una pila para permitir navegación hacia atrás.
- *
- * @param {string} title - Título que se mostrará en el modal.
- * @param {string} content - Contenido HTML que se mostrará en el cuerpo del modal.
- * @param {string} [size=''] - Clase de tamaño para el modal (por ejemplo, 'modal-lg', 'modal-sm'). Opcional.
- * @param {string} [footer=''] - Contenido HTML para el pie del modal. Opcional.
- */
-function pushModalView(title, content, size = '', footer = '') {
-    console.log("Introduciendo la vista a la pila");
-    const modal = document.getElementById('dynamicModal');
-    if (!modal) {
-        console.error('Modal no encontrado');
-        return;
-    }
-
-    // Empujar la nueva vista a la pila
-    window.PublishTracker.modalStack.push({
-        title: title,
-        content: content,
-        footer: footer,
-        size: size,
-        formData: null // la nueva vista no tiene datos guardados aún
-    });
-    // Aplicar la nueva vista
-    renderCurrentModalView();
-
-    // Mostrar el modal si no está visible (por si acaso)
-    let modalInstance = bootstrap.Modal.getInstance(modal);
-    if (!modalInstance) {
-        modalInstance = new bootstrap.Modal(modal, { backdrop: true, keyboard: true });
+      modalInstance = new bootstrap.Modal(modal, { backdrop: true, keyboard: true });
     }
     if (!modal.classList.contains('show')) {
-        modalInstance.show();
+      modalInstance.show();
     }
-}
+  },
 
-/**
- * Guarda el estado actual de los campos de entrada (ya sea dentro de un <form> o no) en la última vista de la pila.
- */
-function saveCurrentFormDataToStack() {
+  /**
+   * Asegura que el modal esté visible (versión sin parámetro)
+   * @private
+   */
+  _ensureModalVisible() {
+    const modal = document.getElementById('dynamicModal');
+    if (!modal) return;
+
+    let modalInstance = bootstrap.Modal.getInstance(modal);
+    if (!modalInstance) {
+      modalInstance = new bootstrap.Modal(modal, { backdrop: true, keyboard: true });
+    }
+    if (!modal.classList.contains('show')) {
+      modalInstance.show();
+    }
+  },
+
+  /**
+   * Guarda el estado actual de todos los campos del formulario en la pila
+   * @private
+   */
+  _backupFormData() {
     const currentBody = document.getElementById('modalBody');
-    if (!currentBody || window.PublishTracker.modalStack.length === 0) {
-        console.warn("No hay vista actual en la pila o no hay cuerpo.");
-        return;
-    }
+    if (!currentBody || this.stack.length === 0) return;
 
-    // Intenta encontrar un <form> como antes
-    let form = currentBody.querySelector('form');
+    const form = currentBody.querySelector('form');
+    const inputs = form
+      ? form.querySelectorAll('input, select, textarea')
+      : currentBody.querySelectorAll('input, select, textarea');
 
-    // Si no hay un <form>, busca directamente los inputs dentro del cuerpo del modal
-    let inputs;
-    if (form) {
-        inputs = form.querySelectorAll('input, select, textarea');
-    } else {
-        // Si no hay form, busca campos en el cuerpo del modal
-        console.warn("No se encontró un <form> en la vista actual, buscando campos directamente en el cuerpo.");
-        inputs = currentBody.querySelectorAll('input, select, textarea');
-    }
-
-    if (!inputs || inputs.length === 0) {
-        console.warn("No se encontraron campos de entrada (<input>, <select>, <textarea>) en la vista actual.");
-        // Aún así guardamos un objeto vacío para mantener la estructura de la pila
-        const stack = window.PublishTracker.modalStack;
-        const currentView = stack[stack.length - 1];
-        currentView.formData = {};
-        return;
+    if (!inputs.length) {
+      this.stack[this.stack.length - 1].formData = {};
+      return;
     }
 
     const formData = {};
     inputs.forEach(input => {
-        // Asegurarse de que el campo tenga un nombre para poder guardarlo
-        if (input.name) {
-            if (input.type === 'checkbox' || input.type === 'radio') {
-                formData[input.name] = input.checked;
-            } else {
-                formData[input.name] = input.value;
-            }
-        } else {
-            // Opcional: puedes elegir ignorar campos sin nombre o usar otro identificador
-            console.warn(`Campo sin 'name' encontrado:`, input);
-        }
+      if (input.name) {
+        formData[input.name] = ['checkbox', 'radio'].includes(input.type)
+          ? input.checked
+          : input.value;
+      }
     });
 
-    // Guardar en la última entrada de la pila
-    const stack = window.PublishTracker.modalStack;
-    const currentView = stack[stack.length - 1];
-    currentView.formData = formData;
-    console.log("✅ Estado de campos guardado en la pila:", currentView.title, formData);
-}
-/**
- * Navega a una nueva vista, guardando el estado actual del formulario antes de salirf
- * @param {string} title - Título de la nueva vista.
- * @param {string} content - Contenido HTML de la nueva vista.
- * @param {string} [size=''] - Tamaño del modal.
- * @param {string} [footer=''] - Contenido del pie.
- */
-async function goToModalView(url, title, size = '', footer = '') {
-    const modal = document.getElementById('dynamicModal');
-    if (!modal) {
-        console.error('Modal no encontrado');
-        return;
-    }
+    this.stack[this.stack.length - 1].formData = formData;
+  },
 
-    // Guarda el estado actual del formulario en la pila
-    saveCurrentFormDataToStack();
+  /**
+   * Renderiza la vista actual de la pila con animaciones
+   * @private
+   * @async
+   * @returns {Promise<void>}
+   */
+  async _renderCurrentView() {
+    if (this.stack.length === 0) return;
+
+    const current = this.stack[this.stack.length - 1];
+    const elements = {
+      title: document.getElementById('modalTitle'),
+      body: document.getElementById('modalBody'),
+      footer: document.getElementById('footer')
+    };
+
+    await this._animateOut(elements);
+    this._updateContent(elements, current);
+    this._restoreFormData(elements.body, current.formData);
+  },
+
+  /**
+   * Anima la salida del contenido actual con fadeOut
+   * @private
+   * @async
+   * @param {Object} elements - Objetos DOM de título, body y footer
+   * @returns {Promise<void>}
+   */
+  async _animateOut(elements) {
+    const promises = [];
+
+    ['body', 'title'].forEach(key => {
+      const content = elements[key]?.firstElementChild;
+      if (content && content.nodeType === 1) {
+        content.classList.add('animate__animated', 'animate__fadeOut');
+        promises.push(
+          new Promise(resolve => {
+            content.addEventListener('animationend', () => {
+              content.classList.remove('animate__animated', 'animate__fadeOut');
+              content.style.display = 'none';
+              resolve();
+            }, { once: true });
+          })
+        );
+      }
+    });
 
     try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        const content = await response.text();
-        // Empuja la nueva vista usando pushModalView (sin formData porque es nueva)
-        pushModalView(title, content, size, footer);
+      await Promise.all(promises);
     } catch (error) {
-        console.error('Error al cargar contenido del modal:', error);
-
-        // Mostrar vista de error usando pushModalView
-        const errorContent = `
-            <div class="alert alert-danger">
-                <h5><i class="fas fa-exclamation-triangle"></i> Error al cargar</h5>
-                <p>No se pudo cargar el contenido. ${error.message}</p>
-                <button class="btn btn-outline-secondary btn-sm" onclick="popModalView()">
-                    ← Volver
-                </button>
-            </div>
-        `;
-        pushModalView(title, errorContent, size, '');
+      console.error('Error en animación de salida:', error);
     }
-}
-/**
- * Elimina la vista actual del modal de la pila y muestra la vista anterior.
- * Si solo queda una vista en la pila, muestra una advertencia y no hace nada.
- *
- * @function
- * @returns {void}
- */
-function popModalView() {
-    console.log("Sacando la vista de la pila")
-    if (window.PublishTracker.modalStack.length <= 1) {
-        // Si solo queda una vista, cerrar el modal o no hacer nada
-        console.warn('No hay vistas anteriores.');
-        return;
+  },
+
+  /**
+   * Actualiza el contenido del modal con la vista actual
+   * @private
+   * @param {Object} elements - Elementos DOM del modal
+   * @param {Object} current - Vista actual de la pila
+   */
+  _updateContent(elements, current) {
+    // Título
+    if (elements.title) {
+      elements.title.innerHTML = '';
+      const titleSpan = document.createElement('span');
+      titleSpan.textContent = current.title;
+      titleSpan.classList.add('animate__animated', 'animate__fadeIn');
+      elements.title.appendChild(titleSpan);
     }
 
-    window.PublishTracker.modalStack.pop(); // eliminar la vista actual
-    renderCurrentModalView();
-}
-
-/**
- * Renderiza la vista actual del modal basada en el elemento superior de la pila de modales.
- * Actualiza el título, cuerpo, pie y tamaño del modal según la configuración actual del modal.
- * También reinicializa los componentes de Bootstrap (por ejemplo, tooltips) dentro del cuerpo del modal.
- *
- * Supone la siguiente estructura global:
- *   window.PublishTracker.modalStack: Array de objetos de configuración del modal, cada uno con:
- *      @param title: {string} Texto del título del modal.
- *      @param content: {string} Contenido HTML para el cuerpo del modal.
- *      @param footer: {string|undefined} Contenido HTML opcional para el pie del modal.
- *      @param size: {string} Clase de tamaño de modal de Bootstrap (por ejemplo, 'modal-lg').
- *
- * Elementos DOM esperados:
- *   - #modalTitle: Elemento para el título del modal.
- *   - #modalBody: Elemento para el contenido del cuerpo del modal.
- *   - #modalFooter: Elemento para el pie del modal.
- *   - #modalDialog: Elemento para el contenedor del diálogo del modal.
- */
-/**
- * Renderiza la vista actual del modal basada en el elemento superior de la pila de modales.
- * Actualiza el título, cuerpo, pie y tamaño del modal según la configuración actual del modal.
- * También reinicializa los componentes de Bootstrap (por ejemplo, tooltips) dentro del cuerpo del modal.
- * Y restaura el estado de los campos de entrada si existe.
- *
- * Supone la siguiente estructura global:
- *   window.PublishTracker.modalStack: Array de objetos de configuración del modal, cada uno con:
- *      @param title: {string} Texto del título del modal.
- *      @param content: {string} Contenido HTML para el cuerpo del modal.
- *      @param footer: {string|undefined} Contenido HTML opcional para el pie del modal.
- *      @param size: {string} Clase de tamaño de modal de Bootstrap (por ejemplo, 'modal-lg').
- *      @param formData: {Object|undefined} Datos del formulario guardados anteriormente.
- *
- * Elementos DOM esperados:
- *   - #modalTitle: Elemento para el título del modal.
- *   - #modalBody: Elemento para el contenido del cuerpo del modal.
- *   - #modalFooter: Elemento para el pie del modal.
- *   - #modalDialog: Elemento para el contenedor del diálogo del modal.
- */
-function renderCurrentModalView() {
-    console.log("Renderizando la vista");
-    const stack = window.PublishTracker.modalStack;
-    if (stack.length === 0) return;
-    const current = stack[stack.length - 1];
-    const titleEl = document.getElementById('modalTitle');
-    const bodyEl = document.getElementById('modalBody');
-    const footerEl = document.getElementById('modalFooter');
-    const dialogEl = document.getElementById('modalDialog');
-
-    if (titleEl) titleEl.textContent = current.title;
-    if (bodyEl) bodyEl.innerHTML = current.content; // Esto reemplaza el HTML, perdiendo el estado anterior
-    if (footerEl) {
-        footerEl.innerHTML = current.footer || '';
-        footerEl.style.display = current.footer ? 'block' : 'none';
-    }
-    if (dialogEl) {
-        dialogEl.className = 'modal-dialog';
-        if (current.size) dialogEl.classList.add(`modal-${current.size}`);
+    // Cuerpo
+    if (elements.body) {
+      elements.body.innerHTML = '';
+      const bodyDiv = document.createElement('div');
+      bodyDiv.innerHTML = current.content;
+      bodyDiv.classList.add('animate__animated', 'animate__fadeIn');
+      elements.body.appendChild(bodyDiv);
     }
 
-    // 🔑 RESTAURAR EL ESTADO DE LOS CAMPOS DE ENTRADA SI EXISTE formData
-    console.log("Restaurando estado de campos (si corresponde)");
-    if (current.formData && bodyEl) {
-        // Buscar campos como lo hace saveCurrentFormDataToStack
-        let form = bodyEl.querySelector('form');
-        let inputs;
-        if (form) {
-            inputs = form.querySelectorAll('input, select, textarea');
+    // Footer
+    if (elements.footer) {
+      elements.footer.innerHTML = current.footer || '';
+      elements.footer.style.display = current.footer ? 'block' : 'none';
+    }
+  },
+
+  /**
+   * Restaura los valores guardados en los campos del formulario
+   * @private
+   * @param {HTMLElement} bodyElement - Elemento body del modal
+   * @param {Object} formData - Datos del formulario guardados
+   */
+  _restoreFormData(bodyElement, formData) {
+    if (!formData || !bodyElement) return;
+
+    const container = bodyElement.firstElementChild;
+    if (!container) return;
+
+    const inputs = container.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+      if (input.name && formData[input.name] !== undefined) {
+        if (['checkbox', 'radio'].includes(input.type)) {
+          input.checked = formData[input.name];
         } else {
-            inputs = bodyEl.querySelectorAll('input, select, textarea');
+          input.value = formData[input.name];
         }
+      }
+    });
+  }
+};
 
-        if (inputs && inputs.length > 0) {
-            inputs.forEach(input => {
-                if (input.name) { // Solo restaurar si el campo tiene un 'name'
-                    const savedValue = current.formData[input.name];
-                    if (savedValue !== undefined) {
-                        if (input.type === 'checkbox' || input.type === 'radio') {
-                            input.checked = savedValue;
-                        } else {
-                            input.value = savedValue;
-                        }
-                        console.log(`  - Campo '${input.name}' restaurado a:`, savedValue);
-                    }
-                }
-            });
-        } else {
-            console.warn("No se encontraron campos para restaurar en la vista actual después de renderizar.");
-        }
-    }
-}
+// =============================================================================
+// MÓDULO DE GESTIÓN DE AUTORES
+// =============================================================================
+
 /**
- * =========================
- * 4. GESTIÓN DE AUTORES
- * =========================
+ * Gestiona la selección y configuración de autores para un paper
+ * Permite buscar, agregar, eliminar y asignar roles a autores
+ * @namespace AuthorManager
  */
+const AuthorManager = {
+  /**
+   * Lista de autores seleccionados para el paper actual
+   * @type {Array<{autor_id: number, nombre: string, orcid: string, orden: number, rol_id: number|null}>}
+   */
+  selected: [],
 
-let autoresSeleccionadosTemporal = [];
-let rolesDisponibles = [];
+  /**
+   * Lista de roles disponibles cargados desde el servidor
+   * @type {Array<{id: number, nombre_rol: string}>}
+   */
+  roles: [],
 
-async function cargarRoles() {
+  /**
+   * Carga la lista de roles disponibles desde el servidor
+   * @async
+   * @returns {Promise<void>}
+   * @example
+   * await AuthorManager.loadRoles();
+   */
+  async loadRoles() {
     try {
-        const res = await fetch('/authors/api/roles/');
-        const data = await res.json();
-        if (data.success) rolesDisponibles = data.roles;
-        console.log(rolesDisponibles)
+      const res = await fetch('/authors/api/roles/');
+      const data = await res.json();
+      if (data.success) this.roles = data.roles;
     } catch (err) {
-        console.error('Error al cargar roles:', err);
+      console.error('Error al cargar roles:', err);
     }
-}
+  },
 
-function buscarAutorLocal() {
+  /**
+   * Busca autores localmente en la tabla de disponibles
+   * Filtra por nombre u ORCID según el término ingresado
+   * @example
+   * AuthorManager.searchLocal();
+   */
+  searchLocal() {
     const query = document.getElementById('buscarAutor')?.value.trim().toLowerCase();
     if (!query) {
-        showCustomAlert('Ingrese un nombre o ORCID.');
-        return;
+      Utils.showToast('Ingrese un nombre o ORCID.');
+      return;
     }
 
-    const filas = document.querySelectorAll('#autoresDisponibles tr');
-    let encontrados = 0;
-    filas.forEach(fila => {
-        const nombre = fila.querySelector('td:first-child')?.textContent.toLowerCase() || '';
-        const orcid = fila.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
-        if (nombre.includes(query) || orcid.includes(query)) {
-            fila.style.display = '';
-            encontrados++;
-        } else {
-            fila.style.display = 'none';
-        }
+    const rows = document.querySelectorAll('#autoresDisponibles tr');
+    let found = 0;
+
+    rows.forEach(row => {
+      const name = row.querySelector('td:first-child')?.textContent.toLowerCase() || '';
+      const orcid = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
+      const matches = name.includes(query) || orcid.includes(query);
+
+      row.style.display = matches ? '' : 'none';
+      if (matches) found++;
     });
 
-    if (encontrados === 0) showCustomAlert('No se encontraron autores.');
-}
+    if (found === 0) {
+      Utils.showToast('No se encontraron autores.');
+    }
+  },
 
-function agregarAutorSeleccionadoLocal(autorId, nombre, orcid) {
-    if (autoresSeleccionadosTemporal.some(a => a.autor_id === autorId)) {
-        showCustomAlert('Autor ya seleccionado.');
-        return;
+  /**
+   * Agrega un autor a la lista de seleccionados
+   * @param {number} authorId - ID del autor
+   * @param {string} name - Nombre completo del autor
+   * @param {string} orcid - Identificador ORCID del autor
+   * @example
+   * AuthorManager.add(123, 'Juan Pérez', '0000-0001-2345-6789');
+   */
+  add(authorId, name, orcid) {
+    if (this.selected.some(a => a.autor_id === authorId)) {
+      Utils.showToast('Autor ya seleccionado.');
+      return;
     }
 
-    autoresSeleccionadosTemporal.push({
-        autor_id: autorId,
-        nombre,
-        orcid,
-        orden: autoresSeleccionadosTemporal.length + 1,
-        rol_id: null
+    this.selected.push({
+      autor_id: authorId,
+      nombre: name,
+      orcid,
+      orden: this.selected.length + 1,
+      rol_id: null
     });
 
-    actualizarTablaAutoresSeleccionados();
-    document.querySelector(`#autoresDisponibles tr[data-autor-id="${autorId}"]`)?.style.setProperty('display', 'none');
-    document.getElementById('autoresSeleccionadosData')?.setAttribute('value', JSON.stringify(autoresSeleccionadosTemporal));
-}
+    this._updateUI(authorId);
+  },
 
-function eliminarAutorSeleccionadoLocal(autorId) {
-    autoresSeleccionadosTemporal = autoresSeleccionadosTemporal.filter(a => a.autor_id !== autorId);
-    autoresSeleccionadosTemporal.forEach((a, i) => a.orden = i + 1);
-    actualizarTablaAutoresSeleccionados();
-    document.querySelector(`#autoresDisponibles tr[data-autor-id="${autorId}"]`)?.style.removeProperty('display');
-    document.getElementById('autoresSeleccionadosData')?.setAttribute('value', JSON.stringify(autoresSeleccionadosTemporal));
-}
+  /**
+   * Elimina un autor de la lista de seleccionados
+   * Reordena automáticamente los autores restantes
+   * @param {number} authorId - ID del autor a eliminar
+   * @example
+   * AuthorManager.remove(123);
+   */
+  remove(authorId) {
+    this.selected = this.selected.filter(a => a.autor_id !== authorId);
+    this.selected.forEach((a, i) => a.orden = i + 1);
+    this._updateUI(authorId, true);
+  },
 
-function actualizarTablaAutoresSeleccionados() {
+  /**
+   * Actualiza el rol asignado a un autor
+   * @param {number} authorId - ID del autor
+   * @param {number|string} roleId - ID del rol a asignar
+   * @example
+   * AuthorManager.updateRole(123, 1);
+   */
+  updateRole(authorId, roleId) {
+    const author = this.selected.find(a => a.autor_id === authorId);
+    if (author) {
+      author.rol_id = roleId || null;
+      this._updateHiddenField();
+    }
+  },
+
+  /**
+   * Actualiza el orden de aparición de un autor
+   * Reordena automáticamente toda la lista
+   * @param {number} authorId - ID del autor
+   * @param {number|string} newOrder - Nuevo orden (posición)
+   * @example
+   * AuthorManager.updateOrder(123, 2);
+   */
+  updateOrder(authorId, newOrder) {
+    const author = this.selected.find(a => a.autor_id === authorId);
+    if (author) {
+      author.orden = parseInt(newOrder, 10);
+      this.selected.sort((a, b) => a.orden - b.orden);
+      this._updateUI();
+    }
+  },
+
+  /**
+   * Actualiza toda la interfaz de autores (tabla, lista disponible, campo hidden)
+   * @private
+   * @param {number} [authorId=null] - ID del autor afectado
+   * @param {boolean} [removed=false] - Si el autor fue eliminado
+   */
+  _updateUI(authorId = null, removed = false) {
+    this._updateTable();
+    if (authorId) this._updateAvailableList(authorId, removed);
+    this._updateHiddenField();
+  },
+
+  /**
+   * Actualiza la tabla de autores seleccionados
+   * @private
+   */
+  _updateTable() {
     const tbody = document.getElementById('autoresSeleccionados');
     if (!tbody) return;
 
-    const rolOptions = rolesDisponibles.map(r => `<option value="${r.id}">${r.nombre_rol}</option>`).join('');
-    tbody.innerHTML = autoresSeleccionadosTemporal.map(autor => `
-        <tr data-autor-id="${autor.autor_id}">
-            <td>${autor.nombre}</td>
-            <td>${autor.orcid}</td>
-            <td><input type="number" class="form-control form-control-sm" value="${autor.orden}" min="1" onchange="actualizarOrdenAutor(${autor.autor_id}, this.value)"></td>
-            <td>
-                <select class="form-select form-select-sm" onchange="actualizarRolAutor(${autor.autor_id}, this.value)">
-                    <option value="">Seleccionar rol</option>
-                    ${rolOptions}
-                    ${autor.rol_id ? `<option value="${autor.rol_id}" selected>Seleccionado</option>` : ''}
-                </select>
-            </td>
-            <td><button type="button" class="btn btn-sm btn-danger" onclick="eliminarAutorSeleccionadoLocal(${autor.autor_id})"><i class="fas fa-trash"></i></button></td>
-        </tr>
+    const roleOptions = this.roles
+      .map(r => `<option value="${r.id}">${r.nombre_rol}</option>`)
+      .join('');
+
+    tbody.innerHTML = this.selected.map(author => `
+      <tr data-autor-id="${author.autor_id}">
+        <td>${author.nombre}</td>
+        <td>${author.orcid}</td>
+        <td>
+          <input type="number" class="form-control form-control-sm" 
+                 value="${author.orden}" min="1" 
+                 onchange="AuthorManager.updateOrder(${author.autor_id}, this.value)">
+        </td>
+        <td>
+          <select class="form-select form-select-sm" 
+                  onchange="AuthorManager.updateRole(${author.autor_id}, this.value)">
+            <option value="">Seleccionar rol</option>
+            ${roleOptions}
+          </select>
+        </td>
+        <td>
+          <button type="button" class="btn btn-sm btn-danger" 
+                  onclick="AuthorManager.remove(${author.autor_id})">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>
     `).join('');
-}
+  },
 
-function actualizarRolAutor(autorId, rolId) {
-    const autor = autoresSeleccionadosTemporal.find(a => a.autor_id === autorId);
-    if (autor) {
-        autor.rol_id = rolId || null;
-        document.getElementById('autoresSeleccionadosData')?.setAttribute('value', JSON.stringify(autoresSeleccionadosTemporal));
+  /**
+   * Actualiza la visibilidad de un autor en la lista de disponibles
+   * @private
+   * @param {number} authorId - ID del autor
+   * @param {boolean} show - Si debe mostrarse
+   */
+  _updateAvailableList(authorId, show) {
+    const row = document.querySelector(`#autoresDisponibles tr[data-autor-id="${authorId}"]`);
+    if (row) {
+      row.style.display = show ? '' : 'none';
     }
-}
+  },
 
-function actualizarOrdenAutor(autorId, nuevoOrden) {
-    const autor = autoresSeleccionadosTemporal.find(a => a.autor_id === autorId);
-    if (autor) {
-        autor.orden = parseInt(nuevoOrden, 10);
-        autoresSeleccionadosTemporal.sort((a, b) => a.orden - b.orden);
-        actualizarTablaAutoresSeleccionados();
-        document.getElementById('autoresSeleccionadosData')?.setAttribute('value', JSON.stringify(autoresSeleccionadosTemporal));
+  /**
+   * Actualiza el campo hidden con los datos JSON de autores seleccionados
+   * @private
+   */
+  _updateHiddenField() {
+    const field = document.getElementById('autoresSeleccionadosData');
+    if (field) {
+      field.value = JSON.stringify(this.selected);
     }
-}
+  },
+
+  /**
+   * Valida que haya al menos un autor seleccionado y todos tengan rol
+   * @returns {boolean} true si la validación es exitosa
+   * @example
+   * if (AuthorManager.validate()) { // proceder }
+   */
+  validate() {
+    if (this.selected.length === 0) {
+      Utils.showToast('Debe seleccionar al menos un autor.', 'danger');
+      return false;
+    }
+
+    if (this.selected.some(a => !a.rol_id)) {
+      Utils.showToast('Todos los autores deben tener un rol asignado.', 'danger');
+      return false;
+    }
+
+    return true;
+  }
+};
+
+// =============================================================================
+// MÓDULO DE GESTIÓN DE PALABRAS CLAVE
+// =============================================================================
 
 /**
- * =========================
- * 5. GESTIÓN DE PALABRAS CLAVE
- * =========================
+ * Gestiona las palabras clave asociadas a un paper
+ * Permite cargar, seleccionar, crear y eliminar palabras clave
+ * @namespace KeywordManager
  */
+const KeywordManager = {
+  /**
+   * Palabras clave seleccionadas para el paper actual
+   * @type {Array<{id: number|null, nombre: string}>}
+   */
+  selected: [],
 
-window.palabrasClaveSeleccionadas = [];
-window.palabrasClaveDisponibles = [];
+  /**
+   * Palabras clave disponibles en el sistema
+   * @type {Array<{id: number, nombre: string}>}
+   */
+  available: [],
 
-async function cargarPalabrasClaveViaAjax() {
+  /**
+   * Carga las palabras clave disponibles desde el servidor
+   * @async
+   * @returns {Promise<void>}
+   * @example
+   * await KeywordManager.load();
+   */
+  async load() {
     try {
-        const res = await fetch('/api/palabras-clave/');
-        const data = await res.json();
-        if (data.success) window.palabrasClaveDisponibles = data.palabras_clave;
-        console.log(palabrasClaveDisponibles)
-    } catch (err) {
-        console.error('Error al cargar palabras clave:', err);
-    }
-}
-
-function mostrarPalabrasClaveDisponibles() {
-    const container = document.getElementById('palabrasClaveDisponibles');
-    if (!container) return;
-
-    container.innerHTML = '';
-    window.palabrasClaveDisponibles.forEach(palabra => {
-        const yaSel = window.palabrasClaveSeleccionadas.some(p =>
-            (p.id && p.id === palabra.id) || (p.nombre === palabra.nombre)
-        );
-        if (!yaSel) {
-            const span = document.createElement('span');
-            span.className = 'badge bg-secondary me-1 mb-1';
-            span.style.cursor = 'pointer';
-            span.textContent = palabra.nombre;
-            span.onclick = () => seleccionarPalabraClave(palabra);
-            container.appendChild(span);
+      const res = await fetch('/api/palabras-clave/');
+      const data = await res.json();
+      if (data.success) {
+        this.available = data.palabras_clave;
+        // Renderizar solo si el contenedor existe
+        const container = document.getElementById('palabrasClaveDisponibles');
+        if (container) {
+          this._renderAvailable();
         }
-    });
-}
+      }
+    } catch (err) {
+      console.error('Error al cargar palabras clave:', err);
+    }
+  },
 
-function seleccionarPalabraClave(palabra) {
-    const yaSel = window.palabrasClaveSeleccionadas.some(p =>
-        (p.id && p.id === palabra.id) || (p.nombre === palabra.nombre)
+  /**
+   * Selecciona una palabra clave existente
+   * @param {{id: number, nombre: string}} keyword - Palabra clave a seleccionar
+   * @example
+   * KeywordManager.select({ id: 1, nombre: 'Machine Learning' });
+   */
+  select(keyword) {
+    const exists = this.selected.some(k =>
+      (k.id && k.id === keyword.id) || (k.nombre === keyword.nombre)
     );
-    if (yaSel) {
-        showCustomAlert('Palabra clave ya seleccionada.');
-        return;
-    }
-    window.palabrasClaveSeleccionadas.push({ id: palabra.id, nombre: palabra.nombre });
-    actualizarPalabrasClaveSeleccionadas();
-    mostrarPalabrasClaveDisponibles();
-    document.getElementById('palabrasClaveData')?.setAttribute('value', JSON.stringify(window.palabrasClaveSeleccionadas));
-}
 
-function agregarNuevaPalabraClave() {
+    if (exists) {
+      Utils.showToast('Palabra clave ya seleccionada.');
+      return;
+    }
+
+    this.selected.push({ id: keyword.id, nombre: keyword.nombre });
+    this._updateUI();
+  },
+
+  /**
+   * Agrega una nueva palabra clave personalizada
+   * Lee el valor del input y la agrega si es válida
+   * @example
+   * KeywordManager.addNew();
+   */
+  addNew() {
     const input = document.getElementById('palabrasClaveInput');
-    if (!input) return;
-    const valor = input.value.trim();
-    if (!valor) {
-        showCustomAlert('Ingrese una palabra clave.');
-        return;
+    const value = input?.value.trim();
+
+    if (!value) {
+      Utils.showToast('Ingrese una palabra clave.');
+      return;
     }
 
-    const existe = window.palabrasClaveDisponibles.some(p => p.nombre.toLowerCase() === valor.toLowerCase());
-    const yaSel = window.palabrasClaveSeleccionadas.some(p => p.nombre.toLowerCase() === valor.toLowerCase());
+    const existsInAvailable = this.available.some(
+      k => k.nombre.toLowerCase() === value.toLowerCase()
+    );
+    const existsInSelected = this.selected.some(
+      k => k.nombre.toLowerCase() === value.toLowerCase()
+    );
 
-    if (existe) {
-        showCustomAlert('Ya existe. Selecciónela de la lista.');
-        return;
-    }
-    if (yaSel) {
-        showCustomAlert('Ya está seleccionada.');
-        return;
+    if (existsInAvailable) {
+      Utils.showToast('Ya existe. Selecciónela de la lista.');
+      return;
     }
 
-    window.palabrasClaveSeleccionadas.push({ id: null, nombre: valor });
-    actualizarPalabrasClaveSeleccionadas();
+    if (existsInSelected) {
+      Utils.showToast('Ya está seleccionada.');
+      return;
+    }
+
+    this.selected.push({ id: null, nombre: value });
+    this._updateUI();
     input.value = '';
-    document.getElementById('palabrasClaveData')?.setAttribute('value', JSON.stringify(window.palabrasClaveSeleccionadas));
-}
+  },
 
-function actualizarPalabrasClaveSeleccionadas() {
+  /**
+   * Elimina una palabra clave seleccionada por índice
+   * @param {number} index - Índice de la palabra clave en el array selected
+   * @example
+   * KeywordManager.remove(2);
+   */
+  remove(index) {
+    this.selected.splice(index, 1);
+    this._updateUI();
+  },
+
+  /**
+   * Crea en el servidor las palabras clave nuevas que no existen
+   * Actualiza los IDs de las palabras clave creadas exitosamente
+   * @async
+   * @returns {Promise<void>}
+   * @example
+   * await KeywordManager.createNewKeywords();
+   */
+  async createNewKeywords() {
+    const newKeywords = this.selected.filter(k =>
+      !k.id && !this.available.some(
+        a => a.nombre.toLowerCase() === k.nombre.toLowerCase()
+      )
+    );
+
+    for (const keyword of newKeywords) {
+      try {
+        const res = await fetch('/api/palabras-clave/create/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.PublishTracker.csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ nombre: keyword.nombre.toLowerCase() })
+        });
+
+        const data = await res.json();
+        if (data.success && data.palabra_clave) {
+          keyword.id = data.palabra_clave.id;
+          keyword.nombre = data.palabra_clave.nombre;
+          this.available.push(data.palabra_clave);
+        }
+      } catch (err) {
+        console.warn('No se pudo crear palabra clave:', keyword.nombre);
+      }
+    }
+  },
+
+  /**
+   * Actualiza toda la interfaz de palabras clave
+   * @private
+   */
+  _updateUI() {
+    this._renderSelected();
+    this._renderAvailable();
+    this._updateHiddenField();
+  },
+
+  /**
+   * Renderiza las palabras clave seleccionadas como badges
+   * @private
+   */
+  _renderSelected() {
     const container = document.getElementById('palabrasClaveSeleccionadas');
     if (!container) return;
 
-    container.innerHTML = window.palabrasClaveSeleccionadas.map((p, i) => `
-        <span class="badge bg-primary me-1 mb-1">
-            ${p.nombre}
-            <button type="button" class="btn-close btn-close-white" aria-label="Eliminar" 
-                    onclick="eliminarPalabraClaveSeleccionada(${i})" style="font-size:0.5em;"></button>
-        </span>
+    container.innerHTML = this.selected.map((k, i) => `
+      <span class="badge bg-primary me-1 mb-1">
+        ${k.nombre}
+        <button type="button" class="btn-close btn-close-white" 
+                aria-label="Eliminar" 
+                onclick="KeywordManager.remove(${i})" 
+                style="font-size:0.5em;"></button>
+      </span>
     `).join('');
-}
+  },
 
-function eliminarPalabraClaveSeleccionada(index) {
-    window.palabrasClaveSeleccionadas.splice(index, 1);
-    actualizarPalabrasClaveSeleccionadas();
-    mostrarPalabrasClaveDisponibles();
-    document.getElementById('palabrasClaveData')?.setAttribute('value', JSON.stringify(window.palabrasClaveSeleccionadas));
-}
+  /**
+   * Renderiza las palabras clave disponibles para selección
+   * @private
+   */
+  _renderAvailable() {
+    const container = document.getElementById('palabrasClaveDisponibles');
+    if (!container) {
+      console.warn('Contenedor de palabras clave disponibles no encontrado');
+      return;
+    }
 
-function inicializarPalabrasClave() {
-    cargarPalabrasClaveViaAjax().then(() => {
-        setTimeout(mostrarPalabrasClaveDisponibles, 100);
+    container.innerHTML = '';
+    this.available.forEach(keyword => {
+      const isSelected = this.selected.some(k =>
+        (k.id && k.id === keyword.id) || (k.nombre === keyword.nombre)
+      );
+
+      if (!isSelected) {
+        const span = document.createElement('span');
+        span.className = 'badge bg-secondary me-1 mb-1';
+        span.style.cursor = 'pointer';
+        span.textContent = keyword.nombre;
+        span.onclick = () => this.select(keyword);
+        container.appendChild(span);
+      }
     });
-}
+  },
+
+  /**
+   * Actualiza el campo hidden con los datos JSON de palabras clave
+   * @private
+   */
+  _updateHiddenField() {
+    const field = document.getElementById('palabrasClaveData');
+    if (field) {
+      field.value = JSON.stringify(this.selected);
+    }
+  },
+
+  /**
+   * Valida que haya al menos una palabra clave seleccionada
+   * @returns {boolean} true si hay al menos una palabra clave
+   * @example
+   * if (KeywordManager.validate()) { // proceder }
+   */
+  validate() {
+    if (this.selected.length === 0) {
+      Utils.showToast('Debe agregar al menos una palabra clave.', 'danger');
+      return false;
+    }
+    return true;
+  }
+};
+
+// =============================================================================
+// MÓDULO DE GESTIÓN DE PAPERS
+// =============================================================================
 
 /**
- * =========================
- * 6. FUNCIONES DE NEGOCIO
- * =========================
+ * Gestiona el proceso completo de creación y guardado de papers
+ * Coordina la recolección de datos, validaciones y envío al servidor
+ * @namespace PaperManager
  */
+const PaperManager = {
+  /**
+   * Guarda un nuevo paper con todos sus datos asociados
+   * Orquesta todo el proceso: validación, generación de referencia y envío
+   * @async
+   * @returns {Promise<void>}
+   * @example
+   * await PaperManager.save();
+   */
+  async save() {
+    const fields = this._collectFields();
 
-/**
- * Guarda un nuevo paper con validaciones y envío al servidor.
- */
-async function guardarPaper() {
-    // --- Recolección y validación de datos ---
-    const fields = {
-        titulo: document.getElementById('tituloPaper')?.value.trim(),
-        anio: document.getElementById('anioPublicacion')?.value,
-        estatus: document.getElementById('estatusPublicacion')?.value,
-        revista: document.getElementById('revistaSelect')?.value,
-        volumen: document.getElementById('volumenRevista')?.value.trim(),
-        numero: document.getElementById('numeroRevista')?.value.trim(),
-        indiceRevista: document.getElementById('indiceRevista')?.value.trim(),
-        doi: document.getElementById('doiPaper')?.value.trim(),
-        urlCita: document.getElementById('urlCita')?.value.trim(),
-        totalCitas: document.getElementById('totalCitas')?.value,
-        paginaInicio: document.getElementById('paginaInicio')?.value,
-        paginaFin: document.getElementById('paginaFin')?.value,
-        objetivo: document.getElementById('objetivoPaper')?.value.trim(),
-        descripcion: document.getElementById('descripcionPaper')?.value.trim(),
-        abstract: document.getElementById('abstractPaper')?.value.trim(),
-        apoyoSECITI: document.getElementById('apoyoSECITI')?.checked,
-        programaSECITI: document.getElementById('programaSECITI')?.value,
-        ejeSECITHI: document.getElementById('ejeSECITHI')?.value
+    if (!this._validateAll(fields)) return;
+
+    const journalName = document.querySelector('#revistaSelect option:checked')?.textContent || '';
+    const apaReference = this._generateAPAReference({ ...fields, nombreRevista: journalName });
+
+    try {
+      await this._submitData(fields, apaReference);
+    } catch (error) {
+      console.error('Error al guardar el paper:', error);
+      Utils.showToast(`❌ ${error.message}`, 'danger');
+    }
+  },
+
+  /**
+   * Recolecta todos los campos del formulario de nuevo paper
+   * @private
+   * @returns {Object} Objeto con todos los campos del paper
+   */
+  _collectFields() {
+    return {
+      titulo: document.getElementById('tituloPaper')?.value.trim(),
+      anio_publicacion: document.getElementById('anioPublicacion')?.value,
+      estatus_publicacion: document.getElementById('estatusPublicacion')?.value,
+      revista: document.getElementById('revistaSelect')?.value,
+      volumen: document.getElementById('volumenRevista')?.value.trim(),
+      numero: document.getElementById('numeroRevista')?.value.trim(),
+      indiceRevista: document.getElementById('indiceRevista')?.value.trim(),
+      doi: document.getElementById('doiPaper')?.value.trim(),
+      urlCita: document.getElementById('urlCita')?.value.trim(),
+      totalCitas: document.getElementById('totalCitas')?.value,
+      paginaInicio: document.getElementById('paginaInicio')?.value,
+      paginaFin: document.getElementById('paginaFin')?.value,
+      objetivo: document.getElementById('objetivoPaper')?.value.trim(),
+      descripcion: document.getElementById('descripcionPaper')?.value.trim(),
+      abstract: document.getElementById('abstractPaper')?.value.trim(),
+      apoyoSECITI: document.getElementById('apoyoSECITI')?.checked,
+      programaSECITI: document.getElementById('programaSECITI')?.value,
+      ejeSECITHI: document.getElementById('ejeSECITHI')?.value
     };
+  },
 
-    // Validaciones básicas
-    const required = ['titulo', 'anio', 'estatus', 'revista', 'volumen', 'numero', 'indiceRevista', 'doi', 'urlCita', 'objetivo', 'descripcion', 'abstract'];
+  /**
+   * Ejecuta todas las validaciones necesarias
+   * @private
+   * @param {Object} fields - Campos del formulario
+   * @returns {boolean} true si todas las validaciones pasan
+   */
+  _validateAll(fields) {
+    return this._validateRequired(fields) &&
+      this._validateNumeric(fields) &&
+      this._validateFiles() &&
+      AuthorManager.validate() &&
+      KeywordManager.validate();
+  },
+
+  /**
+   * Valida que todos los campos requeridos estén completos
+   * @private
+   * @param {Object} fields - Campos del formulario
+   * @returns {boolean} true si todos los campos requeridos están completos
+   */
+  _validateRequired(fields) {
+    const required = [
+      'titulo', 'anio_publicacion', 'estatus_publicacion', 'revista',
+      'volumen', 'numero', 'indiceRevista', 'doi', 'urlCita',
+      'objetivo', 'descripcion', 'abstract'
+    ];
+
     for (const key of required) {
-        if (!fields[key]) {
-            showCustomAlert(`El campo "${key.replace(/([A-Z])/g, ' $1').toLowerCase()}" es requerido.`, 'danger');
-            return;
-        }
+      if (!fields[key]) {
+        const fieldName = key.replace(/([A-Z])/g, ' $1').toLowerCase();
+        Utils.showToast(`El campo "${fieldName}" es requerido.`, 'danger');
+        return false;
+      }
+    }
+    return true;
+  },
+
+  /**
+   * Valida que los campos numéricos tengan valores válidos
+   * @private
+   * @param {Object} fields - Campos del formulario
+   * @returns {boolean} true si todos los números son válidos
+   */
+  _validateNumeric(fields) {
+    if (!Utils.isValidNumber(fields.totalCitas)) {
+      Utils.showToast('Total de citas debe ser un número válido.', 'danger');
+      return false;
     }
 
-    // Validaciones numéricas
-    if (isNaN(fields.totalCitas) || fields.totalCitas < 0) {
-        showCustomAlert('Total de citas debe ser un número válido.', 'danger'); return;
-    }
-    if (isNaN(fields.paginaInicio) || fields.paginaInicio <= 0) {
-        showCustomAlert('Página de inicio debe ser un número positivo.', 'danger'); return;
-    }
-    if (isNaN(fields.paginaFin) || fields.paginaFin <= 0) {
-        showCustomAlert('Página final debe ser un número positivo.', 'danger'); return;
-    }
-    if (parseInt(fields.paginaInicio) > parseInt(fields.paginaFin)) {
-        showCustomAlert('Página de inicio no puede ser mayor que la final.', 'danger'); return;
+    if (!Utils.isValidRange(fields.paginaInicio, fields.paginaFin)) {
+      Utils.showToast('Las páginas deben ser números válidos y consistentes.', 'danger');
+      return false;
     }
 
-    // Validaciones de relaciones
-    if (autoresSeleccionadosTemporal.length === 0) {
-        showCustomAlert('Debe seleccionar al menos un autor.', 'danger'); return;
-    }
-    if (autoresSeleccionadosTemporal.some(a => !a.rol_id)) {
-        showCustomAlert('Todos los autores deben tener un rol asignado.', 'danger'); return;
-    }
-    if (window.palabrasClaveSeleccionadas.length === 0) {
-        showCustomAlert('Debe agregar al menos una palabra clave.', 'danger'); return;
+    return true;
+  },
+
+  /**
+   * Valida que los archivos requeridos estén adjuntos
+   * @private
+   * @returns {boolean} true si ambos archivos están presentes
+   */
+  _validateFiles() {
+    const paperFile = document.getElementById('archivoPaper')?.files[0];
+    const firstPage = document.getElementById('primeraPagina')?.files[0];
+
+    if (!paperFile) {
+      Utils.showToast('Debe adjuntar el archivo del paper.', 'danger');
+      return false;
     }
 
-    if (fields.apoyoSECITI && (!fields.programaSECITI || !fields.ejeSECITHI)) {
-        showCustomAlert('Si hay apoyo SECITI, debe seleccionar programa y eje.', 'danger'); return;
+    if (!firstPage) {
+      Utils.showToast('Debe adjuntar la primera página.', 'danger');
+      return false;
     }
+
+    return true;
+  },
+
+  /**
+   * Envía los datos del paper al servidor
+   * @private
+   * @async
+   * @param {Object} fields - Campos del paper
+   * @param {string} apaReference - Referencia APA generada
+   * @throws {Error} Si la respuesta del servidor indica error
+   * @returns {Promise<void>}
+   */
+  async _submitData(fields, apaReference) {
+    const formData = new FormData();
+
+    // Campos básicos
+    Object.entries(fields).forEach(([key, value]) => {
+      const fieldName = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      formData.append(fieldName, key === 'apoyoSECITI' ? (value ? 'true' : 'false') : value);
+    });
+
+    // Datos adicionales
+    formData.append('referencia_apa', apaReference);
+    formData.append('autores', JSON.stringify(AuthorManager.selected));
+    formData.append('palabras_clave', JSON.stringify(KeywordManager.selected));
 
     // Archivos
-    const archivoPaper = document.getElementById('archivoPaper')?.files[0];
-    const primeraPagina = document.getElementById('primeraPagina')?.files[0];
-    if (!archivoPaper) { showCustomAlert('Debe adjuntar el archivo del paper.', 'danger'); return; }
-    if (!primeraPagina) { showCustomAlert('Debe adjuntar la primera página.', 'danger'); return; }
+    const paperFile = document.getElementById('archivoPaper')?.files[0];
+    const firstPage = document.getElementById('primeraPagina')?.files[0];
+    if (paperFile) formData.append('archivo_paper', paperFile);
+    if (firstPage) formData.append('primera_pagina', firstPage);
 
-    // Generar referencia APA
-    const nombreRevista = document.querySelector('#revistaSelect option:checked')?.textContent || '';
-    const referenciaAPA = generarReferenciaAPA({
-        titulo: fields.titulo,
-        anio: fields.anio,
-        nombreRevista,
-        volumen: fields.volumen,
-        numero: fields.numero,
-        paginaInicio: fields.paginaInicio,
-        paginaFin: fields.paginaFin,
-        doi: fields.doi
+    // Crear palabras clave nuevas
+    await KeywordManager.createNewKeywords();
+
+    // Enviar
+    const response = await fetch('/publications/create/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': window.PublishTracker.csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: formData
     });
 
-    // --- Preparar FormData ---
-    const formData = new FormData();
-    Object.entries(fields).forEach(([key, value]) => {
-        if (key === 'apoyoSECITI') {
-            formData.append('recibio_apoyo_seciti', value ? 'true' : 'false');
-        } else {
-            formData.append(key.replace(/([A-Z])/g, '_$1').toLowerCase(), value);
-        }
-    });
-    formData.append('referencia_apa', referenciaAPA);
-    formData.append('autores', JSON.stringify(autoresSeleccionadosTemporal));
-    formData.append('palabras_clave', JSON.stringify(window.palabrasClaveSeleccionadas));
-    if (archivoPaper) formData.append('archivo_paper', archivoPaper);
-    if (primeraPagina) formData.append('primera_pagina', primeraPagina);
-
-    // --- Crear palabras clave nuevas si es necesario ---
-    const palabrasNuevas = window.palabrasClaveSeleccionadas.filter(p => !p.id && !window.palabrasClaveDisponibles.some(d => d.nombre.toLowerCase() === p.nombre.toLowerCase()));
-    for (const palabra of palabrasNuevas) {
-        try {
-            const res = await fetch('/api/palabras-clave/create/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': window.PublishTracker.csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ nombre: palabra.nombre.toLowerCase() })
-            });
-            const data = await res.json();
-            if (data.success && data.palabra_clave) {
-                palabra.id = data.palabra_clave.id;
-                palabra.nombre = data.palabra_clave.nombre;
-                window.palabrasClaveDisponibles.push(data.palabra_clave);
-            }
-        } catch (err) {
-            console.warn('No se pudo crear palabra clave:', palabra.nombre);
-        }
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Error al guardar.');
     }
 
-    // --- Enviar al servidor ---
+    Utils.showToast('✅ Paper guardado correctamente.', 'success');
+    setTimeout(() => {
+      bootstrap.Modal.getInstance(document.getElementById('dynamicModal'))?.hide();
+      window.location.reload();
+    }, 1500);
+  },
+
+  /**
+   * Genera una referencia en formato APA para el paper
+   * @private
+   * @param {Object} data - Datos del paper incluyendo nombreRevista
+   * @returns {string} Referencia formateada en estilo APA
+   * @example
+   * // Retorna: "Pérez et al. (2023). Title. Journal, 10(2), 15-20. https://doi.org/..."
+   */
+  _generateAPAReference(data) {
+    const authors = AuthorManager.selected
+      .sort((a, b) => a.orden - b.orden)
+      .map(a => a.nombre);
+
+    let authorCitation = '';
+    if (authors.length === 1) {
+      authorCitation = authors[0];
+    } else if (authors.length === 2) {
+      authorCitation = `${authors[0]} & ${authors[1]}`;
+    } else if (authors.length > 2) {
+      authorCitation = `${authors[0]} et al.`;
+    }
+
+    const volumeIssue = data.volumen && data.numero
+      ? `${data.volumen}(${data.numero})`
+      : (data.volumen || '');
+
+    const pages = data.paginaInicio
+      ? `, ${data.paginaInicio}${data.paginaFin ? `-${data.paginaFin}` : ''}`
+      : '';
+
+    return `${authorCitation}. (${data.anio_publicacion}). ${data.titulo}. ${data.nombreRevista}${volumeIssue ? `, ${volumeIssue}` : ''}${pages}.${data.doi ? ` https://doi.org/${data.doi}` : ''}`;
+  }
+};
+
+// =============================================================================
+// MÓDULO DE GESTIÓN DE ENTIDADES
+// =============================================================================
+
+/**
+ * Gestiona la creación de entidades relacionadas (revistas, editoriales, países, etc.)
+ * Proporciona funcionalidad genérica para guardar y manejar errores
+ * @namespace EntityManager
+ */
+const EntityManager = {
+  /**
+   * Guarda una entidad genérica en el servidor
+   * @async
+   * @param {string} entityType - Tipo de entidad ('revista', 'pais', 'editorial', etc.)
+   * @param {string} formId - ID del formulario HTML
+   * @param {string} createUrl - URL del endpoint de creación
+   * @param {string} [titleField='nombre'] - Nombre del campo usado como título
+   * @returns {Promise<void>}
+   * @example
+   * await EntityManager.save('revista', 'formNuevaRevista', '/journals/create/');
+   */
+  async save(entityType, formId, createUrl, titleField = 'nombre') {
+    const form = document.getElementById(formId);
+    if (!form) {
+      Utils.showToast('Error: Formulario no encontrado.', 'danger');
+      return;
+    }
+
+    const formData = new FormData(form);
+
     try {
-        const response = await fetch('/publications/create/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': window.PublishTracker.csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        });
-        const data = await response.json();
+      const response = await fetch(createUrl, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': window.PublishTracker.csrfToken }
+      });
 
-        if (!response.ok) throw new Error(data.message || 'Error al guardar.');
-        if (data.success) {
-            showCustomAlert('✅ Paper guardado correctamente.', 'success');
-            setTimeout(() => {
-                bootstrap.Modal.getInstance(document.getElementById('dynamicModal'))?.hide();
-                window.location.reload();
-            }, 1500);
-        } else {
-            throw new Error(data.message || 'Error desconocido.');
-        }
+      const data = await response.json();
+
+      if (data.success) {
+        this._clearErrors(formId);
+        Utils.showToast(data.message, 'success');
+
+        setTimeout(() => {
+          ModalManager.pop();
+          setTimeout(() => {
+            this._reloadParentForm(entityType, data.objeto.id);
+          }, 300);
+        }, 800);
+
+      } else {
+        this._handleErrors(formId, data);
+      }
     } catch (error) {
-        console.error('Error al guardar el paper:', error);
-        showCustomAlert(`❌ ${error.message}`, 'danger');
+      console.error(`Error al guardar ${entityType}:`, error);
+      Utils.showToast('Error al comunicarse con el servidor.', 'danger');
     }
+  },
+
+  /**
+   * Limpia todos los mensajes de error del formulario
+   * @private
+   * @param {string} formId - ID del formulario
+   */
+  _clearErrors(formId) {
+    const errorContainers = document.querySelectorAll(`#${formId} .text-danger`);
+    errorContainers.forEach(container => {
+      if (container.id.startsWith('error-')) {
+        container.textContent = '';
+      }
+    });
+
+    const invalidFields = document.querySelectorAll(`#${formId} .is-invalid`);
+    invalidFields.forEach(field => field.classList.remove('is-invalid'));
+  },
+
+  /**
+   * Maneja y muestra los errores de validación del servidor
+   * @private
+   * @param {string} formId - ID del formulario
+   * @param {Object} data - Respuesta del servidor con errores
+   */
+  _handleErrors(formId, data) {
+    this._clearErrors(formId);
+    Utils.showToast(data.message, 'danger');
+
+    if (data.errors) {
+      console.group(`Errores de Validación:`);
+      for (const [fieldName, errorMessages] of Object.entries(data.errors)) {
+        console.error(`Campo '${fieldName}':`, errorMessages);
+
+        const errorContainer = document.getElementById(`error-${fieldName}`);
+        if (errorContainer) {
+          errorContainer.textContent = errorMessages.join(' ');
+
+          const fieldElement = document.querySelector(`#${formId} [name="${fieldName}"]`);
+          if (fieldElement) {
+            fieldElement.classList.add('is-invalid');
+          }
+        }
+      }
+      console.groupEnd();
+    }
+  },
+
+  /**
+   * Recarga el formulario padre con la nueva entidad seleccionada
+   * @private
+   * @param {string} entityType - Tipo de entidad creada
+   * @param {number} entityId - ID de la entidad creada
+   */
+  _reloadParentForm(entityType, entityId) {
+    const urlMap = {
+      revista: '/journals/modal/new-journal/',
+      pais: '/journals/modal/new-journal/',
+      categoria: '/journals/modal/new-journal/',
+      ambito: '/journals/modal/new-journal/',
+      editorial: '/journals/modal/new-journal/',
+      autor: '/modal/new-paper/',
+      programaSeciti: '/modal/new-paper/',
+      ejeSecithi: '/modal/new-paper/'
+    };
+
+    const paramMap = {
+      revista: 'nueva_revista_id',
+      pais: 'nuevo_pais_id',
+      categoria: 'nueva_categoria_id',
+      ambito: 'nuevo_ambito_id',
+      editorial: 'nueva_editorial_id',
+      autor: 'nuevo_autor_id',
+      programaSeciti: 'nuevo_programa_id',
+      ejeSecithi: 'nuevo_eje_id'
+    };
+
+    const baseUrl = urlMap[entityType];
+    const paramName = paramMap[entityType];
+
+    if (!baseUrl || !paramName) {
+      console.warn(`Tipo de entidad no reconocido: ${entityType}`);
+      return;
+    }
+
+    const reloadUrl = `${baseUrl}?${paramName}=${entityId}`;
+    const title = entityType === 'autor' ? 'Registrar Nuevo Paper' : 'Añadir Nueva Revista';
+    const size = entityType === 'autor' ? 'xl' : 'lg';
+
+    ModalManager.loadContent(reloadUrl, title, size, '', false);
+  }
+};
+
+// =============================================================================
+// FUNCIONES GLOBALES DE GUARDADO
+// =============================================================================
+
+/**
+ * Guarda una nueva revista desde el modal dinámico
+ * @async
+ * @returns {Promise<void>}
+ */
+async function guardarRevista() {
+  await EntityManager.save('revista', 'formNuevaRevista', '/journals/create/', 'nombre');
 }
 
 /**
- * Genera una referencia en formato APA.
+ * Guarda un nuevo país desde el modal dinámico
+ * @async
+ * @returns {Promise<void>}
  */
-function generarReferenciaAPA(data) {
-    const autores = autoresSeleccionadosTemporal
-        .sort((a, b) => a.orden - b.orden)
-        .map(a => a.nombre);
-
-    let citaAutores = '';
-    if (autores.length === 1) citaAutores = autores[0];
-    else if (autores.length === 2) citaAutores = `${autores[0]} & ${autores[1]}`;
-    else if (autores.length > 2) citaAutores = `${autores[0]} et al.`;
-
-    const volumenNumero = data.volumen && data.numero ? `${data.volumen}(${data.numero})` : (data.volumen || '');
-    const paginas = data.paginaInicio ? `, ${data.paginaInicio}${data.paginaFin ? `-${data.paginaFin}` : ''}` : '';
-
-    return `${citaAutores}. (${data.anio}). ${data.titulo}. ${data.nombreRevista}${volumenNumero ? `, ${volumenNumero}` : ''}${paginas}.${data.doi ? ` https://doi.org/${data.doi}` : ''}`;
+async function guardarPais() {
+  await EntityManager.save('pais', 'formGenerico', '/journals/create-country/', 'nombre');
 }
 
 /**
- * =========================
- * 7. FUNCIONALIDADES PENDIENTES
- * =========================
+ * Guarda una nueva categoría desde el modal dinámico
+ * @async
+ * @returns {Promise<void>}
  */
+async function guardarCategoria() {
+  await EntityManager.save('categoria', 'formGenerico', '/journals/create-category/', 'nombre');
+}
 
-function viewPaper() { showCustomAlert('Funcionalidad no implementada.', 'warning'); }
-function editPaper() { showCustomAlert('Funcionalidad no implementada.', 'warning'); }
-function generateReport() { showCustomAlert('Funcionalidad no implementada.', 'warning'); }
+/**
+ * Guarda un nuevo ámbito desde el modal dinámico
+ * @async
+ * @returns {Promise<void>}
+ */
+async function guardarAmbito() {
+  await EntityManager.save('ambito', 'formGenerico', '/journals/create-scope/', 'nombre');
+}
+
+/**
+ * Guarda una nueva editorial desde el modal dinámico
+ * @async
+ * @returns {Promise<void>}
+ */
+async function guardarEditorial() {
+  await EntityManager.save('editorial', 'formGenerico', '/journals/create-publisher/', 'nombre');
+}
+/**
+ * Guarda un nuevo programa Secithi
+ * @async
+ * @returns {Promise<void>}
+ */
+async function guardarPrograma() {
+  await EntityManager.save('programaSeciti', 'formGenerico', '/core/create-program/', 'nombre')
+}
+/**
+ * Guarda un nuevo eje Secithi
+ * @async
+ * @returns {Promise<void>}
+ */
+async function guardarEje() {
+  await EntityManager.save('ejeSecithi', 'formGenerico', '/core/create-axis/', 'nombre')
+}
+/**
+ * Guarda un nuevo autor desde el modal dinámico
+ * @async
+ * @returns {Promise<void>}
+ */
+async function guardarAutorDesdeModal() {
+  await EntityManager.save('autor', 'formGenerico', '/authors/create/', 'nombre');
+}
+
+/**
+ * Guarda un nuevo paper con todos sus datos asociados
+ * @async
+ * @returns {Promise<void>}
+ */
+async function guardarPaper() {
+  await PaperManager.save();
+}
+
+// =============================================================================
+// FUNCIONES GLOBALES DE GESTIÓN (Compatibilidad con HTML)
+// =============================================================================
+
+/**
+ * Carga contenido dinámico en el modal (función wrapper)
+ * @param {string} url - URL del contenido
+ * @param {string} title - Título del modal
+ * @param {string} [size=''] - Tamaño del modal
+ * @param {string} [footer=''] - Footer HTML
+ * @param {boolean} [saveState=true] - Guardar estado del formulario
+ * @returns {Promise<void>}
+ */
+function cargarContenidoModal(url, title, size, footer, saveState) {
+  return ModalManager.loadContent(url, title, size, footer, saveState);
+}
+
+/**
+ * Regresa a la vista anterior del modal
+ */
+function regresarAVistaAnterior() {
+  ModalManager.pop();
+}
+
+/**
+ * Carga los roles disponibles para autores
+ * @returns {Promise<void>}
+ */
+function cargarRoles() {
+  return AuthorManager.loadRoles();
+}
+
+/**
+ * Busca autores localmente en la tabla
+ */
+function buscarAutorLocal() {
+  AuthorManager.searchLocal();
+}
+
+/**
+ * Agrega un autor a la lista de seleccionados
+ * @param {number} authorId - ID del autor
+ * @param {string} name - Nombre del autor
+ * @param {string} orcid - ORCID del autor
+ */
+function agregarAutorSeleccionadoLocal(authorId, name, orcid) {
+  AuthorManager.add(authorId, name, orcid);
+}
+
+/**
+ * Elimina un autor de la lista de seleccionados
+ * @param {number} authorId - ID del autor
+ */
+function eliminarAutorSeleccionadoLocal(authorId) {
+  AuthorManager.remove(authorId);
+}
+
+/**
+ * Actualiza el rol de un autor
+ * @param {number} authorId - ID del autor
+ * @param {number} roleId - ID del rol
+ */
+function actualizarRolAutor(authorId, roleId) {
+  AuthorManager.updateRole(authorId, roleId);
+}
+
+/**
+ * Actualiza el orden de un autor
+ * @param {number} authorId - ID del autor
+ * @param {number} newOrder - Nuevo orden
+ */
+function actualizarOrdenAutor(authorId, newOrder) {
+  AuthorManager.updateOrder(authorId, newOrder);
+}
+
+/**
+ * Inicializa el sistema de palabras clave
+ * @returns {Promise<void>}
+ */
+function inicializarPalabrasClave() {
+  return KeywordManager.load();
+}
+
+/**
+ * Selecciona una palabra clave
+ * @param {{id: number, nombre: string}} keyword - Palabra clave a seleccionar
+ */
+function seleccionarPalabraClave(keyword) {
+  KeywordManager.select(keyword);
+}
+
+/**
+ * Agrega una nueva palabra clave personalizada
+ */
+function agregarNuevaPalabraClave() {
+  KeywordManager.addNew();
+}
+
+/**
+ * Elimina una palabra clave seleccionada
+ * @param {number} index - Índice de la palabra clave
+ */
+function eliminarPalabraClaveSeleccionada(index) {
+  KeywordManager.remove(index);
+}
+
+/**
+ * Muestra un mensaje toast (wrapper de utilidad)
+ * @param {string} message - Mensaje a mostrar
+ * @param {string} [type='info'] - Tipo de alerta
+ * @param {number} [duration=3000] - Duración en ms
+ */
+function mostrarAlertaPersonalizada(message, type, duration) {
+  Utils.showToast(message, type, duration);
+}
+
+// =============================================================================
+// MODAL DE NUEVO PAPER
+// =============================================================================
+
+/**
+ * Abre el modal para registrar un nuevo paper
+ * Inicializa palabras clave y roles automáticamente
+ * @async
+ * @returns {Promise<void>}
+ */
+async function abrirModalNuevoPaper() {
+  try {
+    await ModalManager.loadContent(
+      '/modal/new-paper/',
+      'Registrar Nuevo Paper',
+      'xl',
+      '',
+      false,
+      ()=>{
+        inicializarPalabrasClave();
+        if(typeof cargarRoles === 'function') cargarRoles();
+      });
+  } catch (error) {
+    console.error('Error en abrirModalNuevoPaper:', error);
+    Utils.showToast('No se pudo abrir el formulario.', 'danger');
+  }
+}
+
+// =============================================================================
+// ACTUALIZADORES DE SELECT
+// =============================================================================
+
+/**
+ * Gestiona la actualización de elementos <select> después de crear entidades
+ * @namespace SelectUpdater
+ */
+const SelectUpdater = {
+  /**
+   * Actualiza el select de revistas con una nueva revista
+   * @param {{id: number, nombre: string}} newJournal - Nueva revista creada
+   */
+  updateJournal(newJournal) {
+    if (!newJournal) return;
+
+    const select = document.getElementById('revistaSelect');
+    if (!select) return;
+
+    const option = document.createElement('option');
+    option.value = newJournal.id;
+    option.textContent = newJournal.nombre;
+    option.selected = true;
+
+    select.appendChild(option);
+    window.nuevaRevistaCreada = null;
+  },
+
+  /**
+   * Actualiza el select de editoriales con una nueva editorial
+   * @param {{id: number, nombre: string}} newPublisher - Nueva editorial creada
+   */
+  updatePublisher(newPublisher) {
+    this._updateSelect('id_editorial', newPublisher, 'Editorial');
+    window.nuevaEditorialCreada = null;
+  },
+
+  /**
+   * Actualiza el select de países con un nuevo país
+   * @param {{id: number, nombre: string, nombre_completo: string}} newCountry - Nuevo país creado
+   */
+  updateCountry(newCountry) {
+    if (!newCountry) return;
+
+    const select = document.getElementById('id_pais_publicacion');
+    if (!select) {
+      console.warn('Select de país no encontrado.');
+      return;
+    }
+
+    const exists = Array.from(select.options).some(opt => opt.value == newCountry.id);
+    if (!exists) {
+      const option = document.createElement('option');
+      option.value = newCountry.id;
+      option.textContent = newCountry.nombre_completo || newCountry.nombre;
+      option.selected = true;
+
+      select.appendChild(option);
+      Utils.showToast(`País "${option.textContent}" añadido.`, 'info', 2000);
+    }
+
+    window.nuevoPaisCreado = null;
+  },
+
+  /**
+   * Actualiza el select de categorías con una nueva categoría
+   * @param {{id: number, nombre: string}} newCategory - Nueva categoría creada
+   */
+  updateCategory(newCategory) {
+    this._updateSelect('id_categoria', newCategory, 'Categoría');
+    window.nuevaCategoriaCreada = null;
+  },
+
+  /**
+   * Actualiza el select de ámbitos con un nuevo ámbito
+   * @param {{id: number, nombre: string}} newScope - Nuevo ámbito creado
+   */
+  updateScope(newScope) {
+    this._updateSelect('id_ambito', newScope, 'Ámbito');
+    window.nuevoAmbitoCreado = null;
+  },
+
+  updateProgram(newProgram) {
+    this._updateSelect('programaSeciti', newProgram, 'ProgramaSeciti');
+    window.nuevoProgramaCreado = null;
+  },
+
+  updateAxis(newAxis) {
+    this._updateSelect('ejeSecithi', newAxis, 'EjeSecithi');
+    window.nuevoEjeCreado = null;
+  },
+  /**
+   * Actualiza un select genérico con una nueva entidad
+   * @private
+   * @param {string} selectId - ID del elemento select
+   * @param {{id: number, nombre: string}} newEntity - Nueva entidad
+   * @param {string} entityName - Nombre de la entidad para mensajes
+   */
+  _updateSelect(selectId, newEntity, entityName) {
+    if (!newEntity) return;
+
+    const select = document.getElementById(selectId);
+    if (!select) {
+      console.warn(`Select ${selectId} no encontrado.`);
+      return;
+    }
+
+    const exists = Array.from(select.options).some(opt => opt.value == newEntity.id);
+    if (!exists) {
+      const option = document.createElement('option');
+      option.value = newEntity.id;
+      option.textContent = newEntity.nombre;
+      option.selected = true;
+
+      select.appendChild(option);
+      Utils.showToast(`${entityName} "${newEntity.nombre}" añadida.`, 'info', 2000);
+    } else {
+      console.warn(`${entityName} con ID ${newEntity.id} ya existe.`);
+    }
+  }
+};
+
+/**
+ * Actualiza el select de revistas (wrapper)
+ * @param {{id: number, nombre: string}} newJournal - Nueva revista
+ */
+function actualizarSelectRevistas(newJournal) {
+  SelectUpdater.updateJournal(newJournal);
+}
+
+/**
+ * Actualiza el select de editoriales (wrapper)
+ * @param {{id: number, nombre: string}} newPublisher - Nueva editorial
+ */
+function actualizarSelectEditorial(newPublisher) {
+  SelectUpdater.updatePublisher(newPublisher);
+}
+
+/**
+ * Actualiza el select de países (wrapper)
+ * @param {{id: number, nombre: string}} newCountry - Nuevo país
+ */
+function actualizarSelectPais(newCountry) {
+  SelectUpdater.updateCountry(newCountry);
+}
+
+/**
+ * Actualiza el select de categorías (wrapper)
+ * @param {{id: number, nombre: string}} newCategory - Nueva categoría
+ */
+function actualizarSelectCategoria(newCategory) {
+  SelectUpdater.updateCategory(newCategory);
+}
+
+/**
+ * Actualiza el select de ámbitos (wrapper)
+ * @param {{id: number, nombre: string}} newScope - Nuevo ámbito
+ */
+function actualizarSelectAmbito(newScope) {
+  SelectUpdater.updateScope(newScope);
+}
+
+function actualizarSelectPrograma(newProgram) {
+  SelectUpdater.updateProgram(newProgram);
+}
+
+function actualizarSelectEje(newAxis) {
+  SelectUpdater.updateAxis(newAxis);
+}
+
+// =============================================================================
+// FUNCIONALIDADES PENDIENTES
+// =============================================================================
+
+/**
+ * Visualiza los detalles de un paper (no implementado)
+ * @todo Implementar funcionalidad
+ */
+function viewPaper() {
+  Utils.showToast('Funcionalidad no implementada.', 'warning');
+}
+
+/**
+ * Edita un paper existente (no implementado)
+ * @todo Implementar funcionalidad
+ */
+function editPaper() {
+  Utils.showToast('Funcionalidad no implementada.', 'warning');
+}
+
+/**
+ * Genera un reporte de publicaciones (no implementado)
+ * @todo Implementar funcionalidad
+ */
+function generateReport() {
+  Utils.showToast('Funcionalidad no implementada.', 'warning');
+}
+
+// =============================================================================
+// INICIALIZACIÓN
+// =============================================================================
+
+/**
+ * Inicializa la aplicación cuando el DOM está listo
+ * Configura el objeto global, sincroniza pilas y activa listeners
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Inicializar objeto global PublishTracker
+  window.PublishTracker = {
+    csrfToken: Utils.getCookie('csrftoken'),
+    baseUrl: window.location.origin,
+    modalStack: ModalManager.stack
+  };
+
+  // Sincronizar pila de modales
+  ModalManager.stack = window.PublishTracker.modalStack;
+
+  // Auto-submit en formularios de filtros
+  document.querySelectorAll('select[name="status"], select[name="year"]').forEach(select => {
+    select.addEventListener('change', () => {
+      const form = select.closest('form');
+      if (form) form.submit();
+    });
+  });
+
+  // Inicializar tooltips de Bootstrap
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el);
+  });
+
+  // Exponer módulos al scope global para debugging
+  if (typeof window !== 'undefined') {
+    window.PublishTracker.Utils = Utils;
+    window.PublishTracker.ModalManager = ModalManager;
+    window.PublishTracker.AuthorManager = AuthorManager;
+    window.PublishTracker.KeywordManager = KeywordManager;
+    window.PublishTracker.PaperManager = PaperManager;
+    window.PublishTracker.EntityManager = EntityManager;
+    window.PublishTracker.SelectUpdater = SelectUpdater;
+  }
+
+  console.log('✅ PublishTracker inicializado correctamente');
+});

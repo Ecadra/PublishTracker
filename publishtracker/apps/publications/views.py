@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
 from publications.models import Paper
-from authors.models import PaperAutor, Rol, RolAutor, Autor
+from authors.models import PaperAutor, Rol, Autor
 from .models import PalabraClave, PaperPalabraClave
 from core.models import EstatusPublicacion, ProgramaSeciti, EjeSecithi
 from journals.models import Revista, EdicionRevista
@@ -24,7 +24,8 @@ def create_paper(request):
             # Obtener instancias de los modelos relacionados
             estatus_id = request.POST.get('estatus_publicacion')
             revista_id = request.POST.get('revista')
-            
+            print(estatus_id)
+            print(revista_id)
             # Obtener o crear la edición de revista
             revista = Revista.objects.get(id=revista_id) if revista_id else None
             if not revista:
@@ -314,3 +315,55 @@ def get_palabras_clave(request):
         return JsonResponse({'success': True, 'palabras_clave': palabras_list})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+def get_new_paper_modal_content(request):
+    """
+    Vista para renderizar el contenido del modal acordeón para un nuevo paper.
+    """
+    # Obtener IDs de entidades recién creadas desde la solicitud GET
+    nuevo_autor_id = request.GET.get('nuevo_autor_id')
+    nuevo_programa_id = request.GET.get('nuevo_programa_id') # <-- Nuevo parámetro
+    nuevo_eje_id = request.GET.get('nuevo_eje_id')           # <-- Nuevo parámetro
+
+    # Obtener las listas iniciales
+    estatus_publicaciones = EstatusPublicacion.objects.all()
+    revistas = Revista.objects.all()
+    roles = Rol.objects.all()
+    autores = Autor.objects.all() # <-- Asegurar que se incluya el nuevo autor si se creó
+
+    # Obtener programas y ejes iniciales
+    programas_seciti = ProgramaSeciti.objects.all() # <-- Asegurar que se incluya el nuevo si se creó
+    ejes_secithi = EjeSecithi.objects.all()         # <-- Asegurar que se incluya el nuevo si se creó
+
+    # Si hay un ID de autor nuevo, asegurarse de que esté incluido
+    if nuevo_autor_id:
+        try:
+            nuevo_autor = Autor.objects.get(id=nuevo_autor_id)
+            if not autores.filter(id=nuevo_autor_id).exists():
+                autores = Autor.objects.all() # Recargar la lista completa para incluir el nuevo
+        except Autor.DoesNotExist:
+            pass
+    if nuevo_programa_id:
+        try:
+            nuevo_programa = ProgramaSeciti.objects.get(id=nuevo_programa_id)
+            if not programas_seciti.filter(id=nuevo_programa_id).exists():
+                programas_seciti = ProgramaSeciti.objects.all() # Recargar la lista completa
+        except ProgramaSeciti.DoesNotExist:
+            pass # Manejar error si el ID no existe
+    if nuevo_eje_id:
+        try:
+            nuevo_eje = EjeSecithi.objects.get(id=nuevo_eje_id)
+            if not ejes_secithi.filter(id=nuevo_eje_id).exists():
+                ejes_secithi = EjeSecithi.objects.all() # Recargar la lista completa
+        except EjeSecithi.DoesNotExist:
+            pass # Manejar error si el ID no existe
+
+    context = {
+        'estatus_publicaciones': estatus_publicaciones,
+        # Asegurarse de que las listas incluyan las nuevas entidades
+        'programas_seciti': programas_seciti, # <-- Ahora puede incluir el nuevo
+        'ejes_secithi': ejes_secithi,         # <-- Ahora puede incluir el nuevo
+        'revistas': revistas,
+        'autores': autores, # <-- Ahora puede incluir el nuevo
+        'roles_json': json.dumps(list(roles.values('id', 'nombre_rol', 'descripcion'))),
+    }
+    return render(request, 'modals/paper_accordion.html', context)
