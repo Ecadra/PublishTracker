@@ -18,6 +18,7 @@ def create_paper(request):
     """
     Vista para crear un nuevo paper con todas sus relaciones.
     Maneja la creación del paper, sus autores, palabras clave y archivos adjuntos.
+    AHORA INCLUYE EL CAMPO 'proposito'.
     """
     try:
         with transaction.atomic():
@@ -56,8 +57,19 @@ def create_paper(request):
             estatus = EstatusPublicacion.objects.get(id=estatus_id) if estatus_id else None
             if not estatus:
                 raise ValueError("El estatus de publicación es requerido")
-            
+             # --- IMPRIMIR VALORES CRÍTICOS ---
+            recibio_apoyo_seciti_str = request.POST.get('recibio_apoyo_seciti', 'false') # Valor por defecto para depuración
+            print("Debug - recibio_apoyo_seciti (raw):", repr(recibio_apoyo_seciti_str))
+            recibio_apoyo_seciti_bool = recibio_apoyo_seciti_str == 'true'
+            print("Debug - recibio_apoyo_seciti (evaluado):", recibio_apoyo_seciti_bool)
+
+            programa_seciti_id = request.POST.get('programa_seciti')
+            eje_secithi_id = request.POST.get('eje_secithi')
+            print("Debug - programa_seciti_id:", repr(programa_seciti_id))
+            print("Debug - eje_secithi_id:", repr(eje_secithi_id))
+            # --- FIN IMPRESIÓN ---
             # Extraer datos básicos del paper
+            # --- NUEVO: Incluir 'proposito' en la recolección de datos ---
             data = {
                 'titulo': request.POST.get('titulo'),
                 'anio_publicacion': anio,
@@ -73,10 +85,15 @@ def create_paper(request):
                 'descripcion': request.POST.get('descripcion'),
                 'abstract': request.POST.get('abstract'),
                 'referencia_apa': request.POST.get('referencia_apa'),
+                # Añadir el campo proposito aquí
+                'proposito': request.POST.get('proposito'), # <-- Agregar esta línea
             }
+            # --- FIN NUEVO ---
 
             # Agregar programa y eje si tiene apoyo SECITI
+            print(data)
             if data['recibio_apoyo_seciti']:
+                print('recibio apoyo')
                 programa_id = request.POST.get('programa_seciti')
                 eje_id = request.POST.get('eje_secithi')
                 
@@ -85,11 +102,19 @@ def create_paper(request):
                 if not eje_id:
                     raise ValueError("Si el paper tiene apoyo SECITI, debe seleccionar un eje")
                 
-                data['programa'] = ProgramaSeciti.objects.get(id=programa_id)
-                data['eje_secithi'] = EjeSecithi.objects.get(id=eje_id)
-            
+                # Asegurarse de que las instancias existen
+                try:
+                    data['programa'] = ProgramaSeciti.objects.get(id=programa_id)
+                except ProgramaSeciti.DoesNotExist:
+                    raise ValueError(f"Programa SECITI con ID {programa_id} no encontrado.")
+                try:
+                    data['eje_secithi'] = EjeSecithi.objects.get(id=eje_id)
+                except EjeSecithi.DoesNotExist:
+                    raise ValueError(f"Eje SECITHI con ID {eje_id} no encontrado.")
+
             # Crear el paper
-            paper = Paper.objects.create(**data)
+            paper = Paper.objects.create(**data) # <-- 'proposito', 'programa', 'eje_secithi' se asignan aquí si están en 'data'
+
 
             # Procesar autores
             autores = json.loads(request.POST.get('autores', '[]'))

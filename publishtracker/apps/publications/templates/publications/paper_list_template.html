@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Publish Tracker - Lista de Paperes{% endblock %}
+{% block title %}Publish Tracker - Lista de Papers{% endblock %}
 
 {% block extra_css %}
     <!-- CSS adicional específico de esta vista -->
@@ -9,7 +9,6 @@
 
 {% block content %}
   <div class="container-fluid">
-    <!-- Header ya está incluido en base.html vía partial, así que lo omitimos aquí -->
 
     <!-- Search and Filters -->
     <div class="filters-section">
@@ -64,7 +63,7 @@
     <div class="results-summary">
       <p class="text-muted">
         <i class="fas fa-info-circle"></i>
-        Mostrando {{ papers.start_index }}-{{ papers.end_index }} de {{ total_papers }} paperes
+        Mostrando {{ papers.start_index }}-{{ papers.end_index }} de {{ total_papers }} papers
       </p>
     </div>
 
@@ -169,7 +168,7 @@
             <tr>
               <td colspan="8" class="text-center empty-state">
                 <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
-                <p class="text-muted">No se encontraron paperes que coincidan con los criterios de búsqueda.</p>
+                <p class="text-muted">No se encontraron papers que coincidan con los criterios de búsqueda.</p>
               </td>
             </tr>
             {% endfor %}
@@ -180,7 +179,7 @@
 
     <!-- Pagination -->
     {% if papers.has_other_pages %}
-    <nav aria-label="Paginación de paperes" class="mt-4">
+    <nav aria-label="Paginación de papers" class="mt-4">
       <ul class="pagination justify-content-center">
         {% if papers.has_previous %}
         <li class="page-item">

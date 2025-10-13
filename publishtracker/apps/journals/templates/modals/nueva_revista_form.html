@@ -37,7 +37,16 @@
       <div class="text-danger">{{ form.factor_impacto.errors }}</div>
     {% endif %}
   </div>
-
+  <div class="mb-3">
+    {{ form.pais_publicacion.label_tag }}
+    {{ form.pais_publicacion }}
+    <div id="error-pais_publicacion" class="text-danger"></div>
+    {% if form.pais_publicacion.errors %}
+      <div class="text-danger">{{ form.pais_publicacion.errors }}</div>
+    {% endif %}
+    <button type="button" class="btn btn-outline-primary btn-sm mt-1"
+            onclick="cargarContenidoModal('/journals/modal/new-country/', 'Añadir Nuevo País', 'md')">+ Añadir país</button>
+  </div>
   <div class="mb-3">
     {{ form.editorial.label_tag }}
     {{ form.editorial }}
@@ -56,17 +65,6 @@
     {% if form.url.errors %}
       <div class="text-danger">{{ form.url.errors }}</div>
     {% endif %}
-  </div>
-
-  <div class="mb-3">
-    {{ form.pais_publicacion.label_tag }}
-    {{ form.pais_publicacion }}
-    <div id="error-pais_publicacion" class="text-danger"></div>
-    {% if form.pais_publicacion.errors %}
-      <div class="text-danger">{{ form.pais_publicacion.errors }}</div>
-    {% endif %}
-    <button type="button" class="btn btn-outline-primary btn-sm mt-1"
-            onclick="cargarContenidoModal('/journals/modal/new-country/', 'Añadir Nuevo País', 'md')">+ Añadir país</button>
   </div>
 
   <div class="row">

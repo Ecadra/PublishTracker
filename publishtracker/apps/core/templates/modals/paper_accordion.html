@@ -268,8 +268,8 @@
       data-bs-parent="#newPaperAccordion">
       <div class="accordion-body">
         <div class="mb-3">
-          <label for="programaSeciti" class="form-label">Programa SECITI</label>
-          <select class="form-select" id="programaSeciti" name="programa_seciti">
+          <label for="programaSECITI" class="form-label">Programa SECITI</label>
+          <select class="form-select" id="programaSECITI" name="programa_seciti">
             <option value="">Seleccionar</option>
             {% for programa in programas_seciti %}
             <option value="{{ programa.id }}">{{ programa.nombre }}</option>
@@ -280,8 +280,8 @@
             programa</button>
         </div>
         <div class="mb-3">
-          <label for="guardarAmbito" class="form-label">Eje SECITHI</label>
-          <select class="form-select" id="guardarAmbito" name="eje_secithi">
+          <label for="ejeSECITHI" class="form-label">Eje SECITHI</label>
+          <select class="form-select" id="ejeSECITHI" name="eje_secithi">
             <option value="">Seleccionar</option>
             {% for eje in ejes_secithi %}
             <option value="{{ eje.id }}">{{ eje.nombre }}</option>

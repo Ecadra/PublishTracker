@@ -1024,9 +1024,21 @@ const PaperManager = {
   async _submitData(fields, apaReference) {
     const formData = new FormData();
 
-    // Campos básicos
+   // Campos básicos
     Object.entries(fields).forEach(([key, value]) => {
-      const fieldName = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      // Aplicar la transformación de nombre solo a campos que no sean booleanos especiales como apoyoSECITI
+      // O manejar apoyoSECITI de forma específica
+      let fieldName;
+       if (key === 'apoyoSECITI') {
+          fieldName = 'recibio_apoyo_seciti'; // Nombre exacto esperado por Django
+      } else if (key === 'programaSECITI') {
+          fieldName = 'programa_seciti'; // Nombre exacto esperado por Django
+      } else if (key === 'ejeSECITHI') {
+          fieldName = 'eje_secithi'; // Nombre exacto esperado por Django
+      } else {
+          fieldName = key.replace(/([A-Z])/g, '_$1').toLowerCase(); // Transformación estándar para otros campos
+      }
+      console.warn(fieldName);
       formData.append(fieldName, key === 'apoyoSECITI' ? (value ? 'true' : 'false') : value);
     });
 
@@ -1212,17 +1224,80 @@ const EntityManager = {
    * @param {number} entityId - ID de la entidad creada
    */
   _reloadParentForm(entityType, entityId) {
-    const urlMap = {
-      revista: '/journals/modal/new-journal/',
-      pais: '/journals/modal/new-journal/',
-      categoria: '/journals/modal/new-journal/',
-      ambito: '/journals/modal/new-journal/',
-      editorial: '/journals/modal/new-journal/',
-      autor: '/modal/new-paper/',
-      programaSeciti: '/modal/new-paper/',
-      ejeSecithi: '/modal/new-paper/'
-    };
+    // 1. Determinar la vista padre a recargar y el parámetro basado en la entidad creada
+    // Asumiendo que entidades como 'revista', 'pais', etc., se crean desde el formulario de Paper
+    // y entidades como 'autor', 'programa', 'eje' también lo hacen.
+    const entitiesForPaperForm = ['autor', 'programaSeciti', 'ejeSecithi', 'revista'];
 
+    let reloadUrl, title, size;
+
+    if (entitiesForPaperForm.includes(entityType)) {
+      reloadUrl = `/modal/new-paper/?${this._getReloadParamName(entityType)}=${entityId}`;
+      title = 'Registrar Nuevo Paper';
+      size = 'xl';
+    } else {
+      reloadUrl = `/journals/modal/new-journal/?${this._getReloadParamName(entityType)}=${entityId}`;
+      title = 'Añadir Nueva Revista'; // Ajusta si es necesario para otros formularios de Journal
+      size = 'lg';
+    }
+
+    // 2. Guardar estado temporal del formulario actual ANTES de pop/loadContent
+    let estadoTemporal = null;
+    if (ModalManager.stack.length > 0) {
+        estadoTemporal = { ...ModalManager.stack[ModalManager.stack.length - 1] };
+        console.debug("EntityManager._reloadParentForm: Estado temporal guardado:", estadoTemporal);
+        ModalManager.stack.pop(); // Sacar la vista actual antes de recargarla
+        console.debug(`EntityManager._reloadParentForm: Popping current view to reload it (was ${ModalManager.stack.length + 1} items).`);
+    }
+
+    // 3. Cargar la vista padre actualizada
+    ModalManager.loadContent(reloadUrl, title, size, '', false); // No guardar estado
+
+    // 4. Restaurar el estado del formulario DESPUÉS de que se haya cargado la vista
+    //    Y ASEGURAR QUE EL NUEVO OBJETO ESTÉ SELECCIONADO
+    if (estadoTemporal) {
+        setTimeout(() => {
+            if (ModalManager.stack.length > 0) {
+                // Crear una copia del formData guardado para modificarlo
+                const formDataAModificar = { ...estadoTemporal.formData };
+
+                // Mapear el entityType al nombre del campo en el formulario HTML correspondiente
+                // Ajusta estos nombres según tus modelos y Django Forms reales
+                const fieldMap = {
+                    'revista': 'revista', // Asumiendo el campo se llama 'revista' en el form de Paper
+                    'pais': 'pais_publicacion', // Asumiendo el campo se llama 'pais_publicacion' en el form de Revista
+                    'categoria': 'categoria', // Asumiendo el campo se llama 'categoria' en el form de Revista
+                    'ambito': 'ambito', // Asumiendo el campo se llama 'ambito' en el form de Revista
+                    'editorial': 'editorial', // Asumiendo el campo se llama 'editorial' en el form de Revista
+                    // 'autor': 'autores_seleccionados', // Los autores se manejan de otra forma
+                    'programaSeciti': 'programa_seciti', // Asumiendo el campo se llama 'programa_seciti' en el form de Paper
+                    'ejeSecithi': 'eje_secithi', // Asumiendo el campo se llama 'eje_secithi' en el form de Paper
+                };
+
+                const fieldName = fieldMap[entityType];
+
+                // Si el campo existe en el mapeo y está en el formData, actualizar su valor
+                if (fieldName && formDataAModificar.hasOwnProperty(fieldName)) {
+                    // Asignar el ID del nuevo objeto al campo correspondiente
+                    formDataAModificar[fieldName] = entityId.toString(); // Asegurar que sea string como lo espera un <select>
+                    console.debug(`EntityManager._reloadParentForm: Campo '${fieldName}' actualizado a nuevo ID: ${entityId}`);
+                } else {
+                    console.debug(`EntityManager._reloadParentForm: Campo para '${entityType}' no encontrado o no se sobrescribe (puede ser un campo complejo como autores).`);
+                }
+
+                // Aplicar el formData MODIFICADO a la nueva entrada de la pila
+                ModalManager.stack[ModalManager.stack.length - 1].formData = formDataAModificar;
+
+                console.debug("EntityManager._reloadParentForm: Estado (modificado) restaurado en la nueva vista:", ModalManager.stack[ModalManager.stack.length - 1]);
+                // Actualizar el DOM del modal con el estado restaurado (y el nuevo ID seleccionado)
+                ModalManager._renderCurrentView();
+            }
+        }, 100); // Pequeño delay para asegurar carga
+    }
+  },
+
+  // Función auxiliar para mapear entidad al nombre del parámetro de recarga
+  _getReloadParamName(entityType) {
     const paramMap = {
       revista: 'nueva_revista_id',
       pais: 'nuevo_pais_id',
@@ -1233,20 +1308,7 @@ const EntityManager = {
       programaSeciti: 'nuevo_programa_id',
       ejeSecithi: 'nuevo_eje_id'
     };
-
-    const baseUrl = urlMap[entityType];
-    const paramName = paramMap[entityType];
-
-    if (!baseUrl || !paramName) {
-      console.warn(`Tipo de entidad no reconocido: ${entityType}`);
-      return;
-    }
-
-    const reloadUrl = `${baseUrl}?${paramName}=${entityId}`;
-    const title = entityType === 'autor' ? 'Registrar Nuevo Paper' : 'Añadir Nueva Revista';
-    const size = entityType === 'autor' ? 'xl' : 'lg';
-
-    ModalManager.loadContent(reloadUrl, title, size, '', false);
+    return paramMap[entityType];
   }
 };
 

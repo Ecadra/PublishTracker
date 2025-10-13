@@ -11,9 +11,9 @@ class RevistaForm(forms.ModelForm):
             'issn_impreso',
             'issn_electronico',
             'factor_impacto',
+            'pais_publicacion',
             'editorial',
             'url',
-            'pais_publicacion',
             'categoria',
             'ambito',
             'dirigido_cuerpo_academico',
@@ -39,12 +39,12 @@ class RevistaForm(forms.ModelForm):
                 'min': '0',
                 'placeholder': 'Factor de impacto (opcional)'
             }),
+            'pais_publicacion': forms.Select(attrs={'class': 'form-select'}),
             'editorial': forms.Select(attrs={'class': 'form-select'}),
             'url': forms.URLInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'URL de la revista (opcional)'
             }),
-            'pais_publicacion': forms.Select(attrs={'class': 'form-select'}),
             'categoria': forms.Select(attrs={'class': 'form-select'}),
             'ambito': forms.Select(attrs={'class': 'form-select'}),
             'dirigido_cuerpo_academico': forms.CheckboxInput(attrs={'class': 'form-check-input'}),

@@ -1,0 +1,34 @@
+[
+  {
+    "model": "journals.tipoarchivorevista",
+    "pk": 1,
+    "fields": {
+      "tipo": "Portada",
+      "descripcion": "Archivo que contiene la portada de la revista."
+    }
+  },
+  {
+    "model": "journals.tipoarchivorevista",
+    "pk": 2,
+    "fields": {
+      "tipo": "Índice",
+      "descripcion": "Archivo que contiene el índice de la revista."
+    }
+  },
+  {
+    "model": "journals.tipoarchivorevista",
+    "pk": 3,
+    "fields": {
+      "tipo": "Hoja Legal",
+      "descripcion": "Archivo que contiene la hoja legal de la revista."
+    }
+  },
+  {
+    "model": "journals.tipoarchivorevista",
+    "pk": 4,
+    "fields": {
+      "tipo": "Índice de Paper",
+      "descripcion": "Archivo que contiene el índice donde aparece el paper específico."
+    }
+  }
+]

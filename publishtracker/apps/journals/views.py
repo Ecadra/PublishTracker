@@ -78,7 +78,7 @@ def guardar_revista(request):
             return JsonResponse({
                 'success': True,
                 'message': 'Revista guardada correctamente.',
-                'revista': {
+                'objeto': {
                     'id': nueva_revista.id,
                     'nombre': nueva_revista.nombre,
                     'issn_principal': nueva_revista.issn_principal,
