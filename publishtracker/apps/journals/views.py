@@ -2,7 +2,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from .forms import AmbitoRevistaForm, CategoriaRevistaForm, EditorialForm, PaisForm, RevistaForm
-from .models import Editorial, CategoriaRevista, AmbitoRevista
+from .models import ArchivoRevista, EdicionRevista, Editorial, CategoriaRevista, AmbitoRevista
 from core.models import Pais
 
 def modal_nueva_revista(request):
@@ -216,7 +216,6 @@ def modal_nueva_editorial(request):
     }
     return render(request, 'modals/formulario_generico.html', context)
 
-# --- Vista para guardar editorial ---
 def guardar_editorial(request):
     if request.method == 'POST':
         form = EditorialForm(request.POST)
@@ -243,3 +242,43 @@ def guardar_editorial(request):
             })
     else:
         return JsonResponse({'success': False, 'message': 'Método no permitido.'})
+def verificar_edicion(request):
+    revista_id = request.GET.get('revista_id')
+    anio = request.GET.get('anio')
+    volumen = request.GET.get('volumen')
+    numero = request.GET.get('numero') # El número también es importante para la unicidad
+
+    # Validar que los parámetros necesarios están presentes
+    if not all([revista_id, anio, volumen, numero]):
+        return JsonResponse({'success': False, 'error': 'Parámetros incompletos'}, status=400)
+
+    try:
+        # Buscamos la edición usando todos los campos que la hacen única
+        edicion = EdicionRevista.objects.get(
+            revista_id=revista_id,
+            anio=anio,
+            volumen=volumen,
+            numero=numero
+        )
+        
+        # Obtenemos los archivos que ya existen para esta edición
+        archivos_existentes = ArchivoRevista.objects.filter(edicion=edicion).select_related('tipo_archivo')
+        
+        archivos = {
+             archivo.tipo_archivo.tipo: {
+                'nombre': archivo.nombre_archivo,
+                'url': archivo.archivo.url
+            }
+            for archivo in archivos_existentes
+        }
+        print(archivos)
+        return JsonResponse({
+            'success': True,
+            'edicion_existe': True,
+            'archivos': archivos
+        })
+
+    except EdicionRevista.DoesNotExist:
+        return JsonResponse({'success': True, 'edicion_existe': False})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

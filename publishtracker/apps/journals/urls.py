@@ -14,5 +14,6 @@ urlpatterns = [
     path('create-country/', views.guardar_pais, name='guardar_pais'),
     path('create-category/', views.guardar_categoria, name='guardar_categoria'),
     path('create-scope/', views.guardar_ambito, name='guardar_ambito'),
-    path('create-publisher/',views.guardar_editorial,name='guardar_editorial')
+    path('create-publisher/',views.guardar_editorial,name='guardar_editorial'),
+    path('api/verificar-edicion/', views.verificar_edicion, name='verificar_edicion'),
 ]

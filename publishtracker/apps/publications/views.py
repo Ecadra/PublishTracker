@@ -1,81 +1,80 @@
 # paper_list_view/views.py
+import os
 import json
+
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.db import transaction
 from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
-from publications.models import Paper
-from authors.models import PaperAutor, Rol, Autor
-from .models import PalabraClave, PaperPalabraClave
-from core.models import EstatusPublicacion, ProgramaSeciti, EjeSecithi
-from journals.models import Revista, EdicionRevista
-from django.views.decorators.http import require_http_methods
 from django.core.files.storage import default_storage
-from django.db import transaction
+from django.views.decorators.http import require_http_methods
 
+from publications.models import Paper
+from authors.models import PaperAutor, Rol, Autor, RolAutor
+from .models import ArchivoPaper, PalabraClave, PaperPalabraClave, TipoArchivoPaper
+from core.models import EstatusPublicacion, ProgramaSeciti, EjeSecithi
+from journals.models import ArchivoRevista, Revista, EdicionRevista, TipoArchivoRevista
 @require_http_methods(["POST"])
 def create_paper(request):
     """
-    Vista para crear un nuevo paper con todas sus relaciones.
-    Maneja la creación del paper, sus autores, palabras clave y archivos adjuntos.
-    AHORA INCLUYE EL CAMPO 'proposito'.
+    Vista refactorizada para crear un Paper y todas sus relaciones de forma atómica.
+    Maneja la persistencia de archivos para EdicionRevista y para Paper
+    a través de sus respectivas tablas intermedias.
     """
     try:
+        # transaction.atomic asegura que todas las operaciones de BD se completen
+        # con éxito, o ninguna lo hará, evitando datos corruptos.
         with transaction.atomic():
-            # Obtener instancias de los modelos relacionados
-            estatus_id = request.POST.get('estatus_publicacion')
+            
+            # --- PASO 1: OBTENER O CREAR LA EDICIÓN DE LA REVISTA ---
             revista_id = request.POST.get('revista')
-            print(estatus_id)
-            print(revista_id)
-            # Obtener o crear la edición de revista
-            revista = Revista.objects.get(id=revista_id) if revista_id else None
-            if not revista:
-                raise ValueError("La revista es requerida")
-                
-            # Crear o obtener la edición de la revista
-            volumen = request.POST.get('volumen')
-            numero = request.POST.get('numero')
+            if not revista_id:
+                raise ValueError("La revista es un campo requerido.")
+            
+            revista = Revista.objects.get(id=revista_id)
             anio = request.POST.get('anio_publicacion')
             
-            edicion = EdicionRevista.objects.filter(
+            edicion, _ = EdicionRevista.objects.get_or_create(
                 revista=revista,
                 anio=anio,
-                volumen=volumen,
-                numero=numero
-            ).first()
-            
-            if not edicion:
-                edicion = EdicionRevista.objects.create(
-                    revista=revista,
-                    anio=anio,
-                    volumen=volumen,
-                    numero=numero,
-                    indice_revista=request.POST.get('indice_revista')
-                )
-            
-            # Obtener otros modelos relacionados
-            estatus = EstatusPublicacion.objects.get(id=estatus_id) if estatus_id else None
-            if not estatus:
-                raise ValueError("El estatus de publicación es requerido")
-             # --- IMPRIMIR VALORES CRÍTICOS ---
-            recibio_apoyo_seciti_str = request.POST.get('recibio_apoyo_seciti', 'false') # Valor por defecto para depuración
-            print("Debug - recibio_apoyo_seciti (raw):", repr(recibio_apoyo_seciti_str))
-            recibio_apoyo_seciti_bool = recibio_apoyo_seciti_str == 'true'
-            print("Debug - recibio_apoyo_seciti (evaluado):", recibio_apoyo_seciti_bool)
+                volumen=request.POST.get('volumen'),
+                numero=request.POST.get('numero'),
+                defaults={'indice_revista': request.POST.get('indice_revista')}
+            )
 
-            programa_seciti_id = request.POST.get('programa_seciti')
-            eje_secithi_id = request.POST.get('eje_secithi')
-            print("Debug - programa_seciti_id:", repr(programa_seciti_id))
-            print("Debug - eje_secithi_id:", repr(eje_secithi_id))
-            # --- FIN IMPRESIÓN ---
-            # Extraer datos básicos del paper
-            # --- NUEVO: Incluir 'proposito' en la recolección de datos ---
-            data = {
+            # --- PASO 2: PROCESAR Y GUARDAR ARCHIVOS DE LA EDICIÓN ---
+            tipos_archivo_revista_map = {
+                'archivo_edicion_portada': 'Portada',
+                'archivo_edicion_hoja_legal': 'Hoja Legal',
+                'archivo_edicion_indice_de_paper': 'Indice de Paper',
+            }
+            for field_name, tipo_nombre in tipos_archivo_revista_map.items():
+                if field_name in request.FILES:
+                    tipo_obj = TipoArchivoRevista.objects.get(tipo=tipo_nombre)
+                    # Usamos update_or_create para asegurar que el archivo se guarde
+                    # tanto en registros nuevos como en existentes.
+                    ArchivoRevista.objects.update_or_create(
+                        edicion=edicion,
+                        tipo_archivo=tipo_obj,
+                        defaults={
+                            'archivo': request.FILES[field_name],
+                            'nombre_archivo': request.FILES[field_name].name
+                        }
+                    )
+
+            # --- PASO 3: PREPARAR DATOS Y CREAR EL OBJETO PAPER ---
+            estatus_id = request.POST.get('estatus_publicacion')
+            if not estatus_id:
+                raise ValueError("El estatus de publicación es requerido.")
+            
+            estatus = EstatusPublicacion.objects.get(id=estatus_id)
+            
+            paper_data = {
                 'titulo': request.POST.get('titulo'),
                 'anio_publicacion': anio,
                 'estatus_publicacion': estatus,
                 'edicion': edicion,
-                'recibio_apoyo_seciti': request.POST.get('recibio_apoyo_seciti') == 'true',
                 'doi': request.POST.get('doi'),
                 'url_cita': request.POST.get('url_cita'),
                 'total_citas': request.POST.get('total_citas') or 0,
@@ -84,109 +83,90 @@ def create_paper(request):
                 'objetivo': request.POST.get('objetivo'),
                 'descripcion': request.POST.get('descripcion'),
                 'abstract': request.POST.get('abstract'),
-                'referencia_apa': request.POST.get('referencia_apa'),
-                # Añadir el campo proposito aquí
-                'proposito': request.POST.get('proposito'), # <-- Agregar esta línea
+                'referencia_apa': request.POST.get('referencia_apa', ''),
+                'proposito': request.POST.get('proposito'),
+                'recibio_apoyo_seciti': request.POST.get('recibio_apoyo_seciti') == 'true',
             }
-            # --- FIN NUEVO ---
+            
+            if paper_data['recibio_apoyo_seciti']:
+                paper_data['programa'] = ProgramaSeciti.objects.get(id=request.POST.get('programa_seciti'))
+                paper_data['eje_secithi'] = EjeSecithi.objects.get(id=request.POST.get('eje_secithi'))
 
-            # Agregar programa y eje si tiene apoyo SECITI
-            print(data)
-            if data['recibio_apoyo_seciti']:
-                print('recibio apoyo')
-                programa_id = request.POST.get('programa_seciti')
-                eje_id = request.POST.get('eje_secithi')
-                
-                if not programa_id:
-                    raise ValueError("Si el paper tiene apoyo SECITI, debe seleccionar un programa")
-                if not eje_id:
-                    raise ValueError("Si el paper tiene apoyo SECITI, debe seleccionar un eje")
-                
-                # Asegurarse de que las instancias existen
-                try:
-                    data['programa'] = ProgramaSeciti.objects.get(id=programa_id)
-                except ProgramaSeciti.DoesNotExist:
-                    raise ValueError(f"Programa SECITI con ID {programa_id} no encontrado.")
-                try:
-                    data['eje_secithi'] = EjeSecithi.objects.get(id=eje_id)
-                except EjeSecithi.DoesNotExist:
-                    raise ValueError(f"Eje SECITHI con ID {eje_id} no encontrado.")
+            paper = Paper.objects.create(**paper_data)
+            # Directorio de destino para los archivos clonados
+            clone_dir = os.path.join(str(edicion.anio), str(revista.id), str(paper.id), 'archivos_revista')
 
-            # Crear el paper
-            paper = Paper.objects.create(**data) # <-- 'proposito', 'programa', 'eje_secithi' se asignan aquí si están en 'data'
+            # Obtener todos los archivos asociados a la edición que acabamos de guardar
+            archivos_de_la_edicion = ArchivoRevista.objects.filter(edicion=edicion)
 
+            for archivo_revista in archivos_de_la_edicion:
+                # El nombre del archivo tal como se guardó en el disco
+                nombre_archivo_guardado = os.path.basename(archivo_revista.archivo.name)
 
-            # Procesar autores
+                # Ruta completa de destino
+                destination_path = os.path.join(clone_dir, nombre_archivo_guardado)
+
+                # Abrir el archivo original en modo lectura binaria ('rb') y guardarlo en el nuevo destino
+                with archivo_revista.archivo.open('rb') as original_file:
+                    default_storage.save(destination_path, original_file)
+
+            # --- PASO 4: PROCESAR Y GUARDAR ARCHIVOS DEL PAPER ---
+            tipos_archivo_paper_map = {
+                'archivo_paper': 'Paper Completo',    # name del input -> tipo en la BD
+                'primera_pagina': 'Primera Pagina', # name del input -> tipo en la BD
+            }
+            for field_name, tipo_nombre in tipos_archivo_paper_map.items():
+                if field_name in request.FILES:
+                    tipo_obj = TipoArchivoPaper.objects.get(tipo=tipo_nombre)
+                    ArchivoPaper.objects.create(
+                        paper=paper,
+                        tipo_archivo=tipo_obj,
+                        archivo=request.FILES[field_name],
+                        nombre_archivo=request.FILES[field_name].name
+                    )
+
+            # --- PASO 5: PROCESAR AUTORES Y PALABRAS CLAVE ---
             autores = json.loads(request.POST.get('autores', '[]'))
             if not autores:
-                raise ValueError("Debe seleccionar al menos un autor")
-
-            # Crear las relaciones autor-paper
-            for autor in autores:
-                if not all(k in autor for k in ('autor_id', 'orden', 'rol_id')):
-                    raise ValueError("Datos de autor incompletos")
-                    
-                from authors.models import RolAutor
-                try:
-                    rol_autor = RolAutor.objects.get(autor_id=autor['autor_id'], rol_id=autor['rol_id'])
-                except RolAutor.DoesNotExist:
-                    rol_autor = RolAutor.objects.create(
-                        autor_id=autor['autor_id'],
-                        rol_id=autor['rol_id']
-                    )
+                raise ValueError("Debe seleccionar al menos un autor.")
+                
+            for autor_data in autores:
+                autor_obj = Autor.objects.get(id=autor_data['autor_id'])
+                rol_obj = Rol.objects.get(id=autor_data['rol_id'])
+                
+                rol_autor, _ = RolAutor.objects.get_or_create(autor=autor_obj, rol=rol_obj)
                 
                 PaperAutor.objects.create(
                     paper=paper,
-                    autor_id=autor['autor_id'],
-                    orden_autor=autor['orden'],
+                    autor=autor_obj,
+                    orden_autor=autor_data['orden'],
                     rol_autor=rol_autor
                 )
 
-            # Procesar palabras clave
             palabras_clave = json.loads(request.POST.get('palabras_clave', '[]'))
-            for palabra in palabras_clave:
-                # Si la palabra clave es nueva (id es null), crearla primero
-                if palabra.get('id') is None:
-                    palabra_clave = PalabraClave.objects.create(nombre=palabra['nombre'])
-                else:
-                    palabra_clave = PalabraClave.objects.get(id=palabra['id'])
-                
-                # Crear la relación con el paper
-                PaperPalabraClave.objects.create(
-                    paper=paper,
-                    palabra_clave=palabra_clave
+            for palabra_data in palabras_clave:
+                palabra_obj, _ = PalabraClave.objects.get_or_create(
+                    nombre=palabra_data['nombre'].strip().lower(),
+                    defaults={'nombre': palabra_data['nombre'].strip()}
                 )
-
-            # Procesar archivos
-            if 'archivo_paper' in request.FILES:
-                archivo = request.FILES['archivo_paper']
-                ruta_archivo = f'papers/{paper.id}/{archivo.name}'
-                paper.archivo_paper = default_storage.save(ruta_archivo, archivo)
-
-            if 'primera_pagina' in request.FILES:
-                archivo = request.FILES['primera_pagina']
-                ruta_archivo = f'papers/{paper.id}/primera_pagina/{archivo.name}'
-                paper.primera_pagina = default_storage.save(ruta_archivo, archivo)
-
-            paper.save()
-
+                PaperPalabraClave.objects.create(paper=paper, palabra_clave=palabra_obj)
+            
+            # Si todo ha ido bien, se llega aquí y la transacción se confirma.
             return JsonResponse({
                 'success': True,
-                'message': 'Paper creado exitosamente',
+                'message': 'Paper y todos sus archivos han sido guardados exitosamente.',
                 'paper_id': paper.id
             })
 
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        # Errores de datos faltantes o mal formados
+        return JsonResponse({'success': False, 'message': f'Error en los datos enviados: {str(e)}'}, status=400)
     except Exception as e:
-        # Registrar el error para debugging
+        # Otros errores (ej. objeto no encontrado en la BD, error de guardado)
         import traceback
-        print("Error al crear paper:", str(e))
-        print(traceback.format_exc())
-        
-        return JsonResponse({
-            'success': False,
-            'message': f'Error al crear el paper: {str(e)}',
-            'error_details': traceback.format_exc()
-        }, status=500)
+        traceback.print_exc() # Imprime el error completo en la consola del servidor
+        return JsonResponse({'success': False, 'message': f'Ha ocurrido un error inesperado: {str(e)}'}, status=500)
+
 @require_http_methods(["POST"])
 def create_keywords(request):
     """
@@ -356,8 +336,8 @@ def get_new_paper_modal_content(request):
     autores = Autor.objects.all() # <-- Asegurar que se incluya el nuevo autor si se creó
 
     # Obtener programas y ejes iniciales
-    programas_seciti = ProgramaSeciti.objects.all() # <-- Asegurar que se incluya el nuevo si se creó
-    ejes_secithi = EjeSecithi.objects.all()         # <-- Asegurar que se incluya el nuevo si se creó
+    programas_seciti = ProgramaSeciti.objects.all() 
+    ejes_secithi = EjeSecithi.objects.all()        
 
     # Si hay un ID de autor nuevo, asegurarse de que esté incluido
     if nuevo_autor_id:

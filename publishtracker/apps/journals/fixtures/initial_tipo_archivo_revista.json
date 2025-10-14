@@ -11,7 +11,7 @@
     "model": "journals.tipoarchivorevista",
     "pk": 2,
     "fields": {
-      "tipo": "Índice",
+      "tipo": "Indice",
       "descripcion": "Archivo que contiene el índice de la revista."
     }
   },
@@ -27,7 +27,7 @@
     "model": "journals.tipoarchivorevista",
     "pk": 4,
     "fields": {
-      "tipo": "Índice de Paper",
+      "tipo": "Indice de Paper",
       "descripcion": "Archivo que contiene el índice donde aparece el paper específico."
     }
   }

@@ -4,7 +4,28 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from datetime import datetime
 from core.models import Pais
+import os
+from django.utils.text import slugify
 
+def revista_file_path(instance, filename):
+    """Genera la ruta y el nombre para los archivos de la revista."""
+    edicion = instance.edicion
+    revista = edicion.revista
+
+    # Limpia los nombres para usarlos en el nombre del archivo
+    tipo_slug = slugify(instance.tipo_archivo.tipo)
+    revista_slug = slugify(revista.nombre)[:15] # Trunca a 15 caracteres
+
+    # Obtiene la extensión del archivo original
+    ext = os.path.splitext(filename)[1]
+
+    # Construye el nuevo nombre de archivo: Tipo_año_revista.ext
+    new_filename = f"{tipo_slug}_{edicion.anio}_{revista_slug}{ext}"
+
+    # Construye la ruta de la carpeta: Año/IDRevista/
+    path = os.path.join(str(edicion.anio), str(revista.id))
+
+    return os.path.join(path, new_filename)
 
 class Editorial(models.Model):
     """Modelo para representar editoriales"""
@@ -149,7 +170,7 @@ class ArchivoRevista(models.Model):
     edicion = models.ForeignKey(EdicionRevista, on_delete=models.CASCADE, verbose_name="Edición")
     tipo_archivo = models.ForeignKey(TipoArchivoRevista, on_delete=models.CASCADE, verbose_name="Tipo de Archivo")
     nombre_archivo = models.CharField(max_length=255, verbose_name="Nombre del Archivo")
-    archivo = models.FileField(upload_to="revistas/", verbose_name="Archivo")
+    archivo = models.FileField(upload_to=revista_file_path, verbose_name="Archivo")
     fecha_subida = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Subida")
     
     class Meta:

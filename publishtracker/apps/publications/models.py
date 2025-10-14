@@ -5,8 +5,29 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from datetime import datetime
 from core.models import EstatusPublicacion, ProgramaSeciti, EjeSecithi
 from journals.models import EdicionRevista
+import os
+from django.utils.text import slugify
+def paper_file_path(instance, filename):
+    """Genera la ruta y el nombre para los archivos del paper."""
+    paper = instance.paper
+    edicion = paper.edicion
+    revista = edicion.revista
 
+    # Limpia los nombres
+    tipo_slug = slugify(instance.tipo_archivo.tipo)
+    revista_slug = slugify(revista.nombre)[:15]
+    paper_slug = slugify(paper.titulo)[:20] # Trunca a 20 caracteres
 
+    # Obtiene la extensión
+    ext = os.path.splitext(filename)[1]
+
+    # Construye el nuevo nombre de archivo: Tipo_año_revista_articulo.ext
+    new_filename = f"{tipo_slug}_{edicion.anio}_{revista_slug}_{paper_slug}{ext}"
+
+    # Construye la ruta de la carpeta: Año/IDRevista/IDPaper/
+    path = os.path.join(str(edicion.anio), str(revista.id), str(paper.id))
+
+    return os.path.join(path, new_filename)
 class Paper(models.Model):
     """Modelo principal para papers/artículos científicos"""
 
@@ -114,7 +135,6 @@ class Paper(models.Model):
             self.doi = clean_doi
         super().save(*args, **kwargs)
 
-    # ---- PROPIEDADES ÚTILES ----
     @property
     def doi_url(self):
         return f"https://doi.org/{self.doi}" if self.doi else None
@@ -156,3 +176,38 @@ class Cita(models.Model):
     paper = models.ForeignKey(Paper, on_delete=models.CASCADE, related_name='citas')
     tipo_cita=models.CharField(max_length=100, verbose_name="Tipo de Cita")
     texto_cita = models.TextField(verbose_name="Texto de la Cita")
+class TipoArchivoPaper(models.Model):
+    """Define los tipos de archivos que se pueden asociar a un paper."""
+    tipo = models.CharField(max_length=100, unique=True, db_index=True, verbose_name="Tipo de Archivo")
+    descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
+    
+    class Meta:
+        managed = True
+        verbose_name = "Tipo de Archivo de Paper"
+        verbose_name_plural = "Tipos de Archivos de Paper"
+        ordering = ['tipo']
+    
+    def __str__(self):
+        return self.tipo
+class ArchivoPaper(models.Model):
+    """Tabla intermedia que asocia un archivo físico con un Paper y su tipo."""
+    paper = models.ForeignKey(Paper, on_delete=models.CASCADE, related_name='archivos', verbose_name="Paper")
+    tipo_archivo = models.ForeignKey(TipoArchivoPaper, on_delete=models.CASCADE, verbose_name="Tipo de Archivo")
+    nombre_archivo = models.CharField(max_length=255, verbose_name="Nombre del Archivo")
+    archivo = models.FileField(upload_to=paper_file_path, verbose_name="Archivo")
+    fecha_subida = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Subida")
+    
+    class Meta:
+        managed = True
+        verbose_name = "Archivo de Paper"
+        verbose_name_plural = "Archivos de Papers"
+        ordering = ['-fecha_subida']
+        # Asegura que no se pueda subir el mismo tipo de archivo dos veces para el mismo paper
+        unique_together = ['paper', 'tipo_archivo']
+    
+    def __str__(self):
+        return f"{self.nombre_archivo} ({self.tipo_archivo.tipo}) - {self.paper.titulo_corto}"
+
+    @property
+    def extension(self):
+        return self.nombre_archivo.split('.')[-1].lower() if '.' in self.nombre_archivo else ''

@@ -1235,10 +1235,12 @@ const EntityManager = {
       reloadUrl = `/modal/new-paper/?${this._getReloadParamName(entityType)}=${entityId}`;
       title = 'Registrar Nuevo Paper';
       size = 'xl';
+      onRenderCallback = initializePaperFormListeners;
     } else {
       reloadUrl = `/journals/modal/new-journal/?${this._getReloadParamName(entityType)}=${entityId}`;
       title = 'Añadir Nueva Revista'; // Ajusta si es necesario para otros formularios de Journal
       size = 'lg';
+      onRenderCallback = initializePaperFormListeners;
     }
 
     // 2. Guardar estado temporal del formulario actual ANTES de pop/loadContent
@@ -1251,7 +1253,7 @@ const EntityManager = {
     }
 
     // 3. Cargar la vista padre actualizada
-    ModalManager.loadContent(reloadUrl, title, size, '', false); // No guardar estado
+    ModalManager.loadContent(reloadUrl, title, size, '', false,onRenderCallback); // No guardar estado
 
     // 4. Restaurar el estado del formulario DESPUÉS de que se haya cargado la vista
     //    Y ASEGURAR QUE EL NUEVO OBJETO ESTÉ SELECCIONADO
@@ -1513,7 +1515,42 @@ function mostrarAlertaPersonalizada(message, type, duration) {
 // =============================================================================
 // MODAL DE NUEVO PAPER
 // =============================================================================
+/**
+ * Adjunta todos los listeners necesarios al formulario de nuevo paper.
+ * Debe llamarse cada vez que el contenido del modal del paper se renderiza.
+ */
+function initializePaperFormListeners() {
+    console.log("Inicializando listeners del formulario del paper...");
+    
+    // Inicializadores de datos
+    inicializarPalabrasClave();
+    if(typeof cargarRoles === 'function') cargarRoles();
 
+    // Listeners para el Asistente de Edición
+    const revistaSelect = document.getElementById('revistaSelect');
+    const anioInput = document.getElementById('anioPublicacion');
+    const volumenInput = document.getElementById('volumenRevista');
+    const numeroInput = document.getElementById('numeroRevista');
+
+    if (revistaSelect && anioInput && volumenInput && numeroInput) {
+        // Eliminar listeners antiguos para evitar duplicados (buena práctica)
+        const check = () => EditionManager.check();
+        revistaSelect.removeEventListener('change', check);
+        anioInput.removeEventListener('blur', check);
+        volumenInput.removeEventListener('blur', check);
+        numeroInput.removeEventListener('blur', check);
+
+        // Añadir listeners nuevos
+        revistaSelect.addEventListener('change', check);
+        anioInput.addEventListener('blur', check);
+        volumenInput.addEventListener('blur', check);
+        numeroInput.addEventListener('blur', check);
+        
+        console.log("Listeners de EditionManager adjuntados.");
+    } else {
+        console.warn("No se encontraron todos los elementos para el Asistente de Edición.");
+    }
+}
 /**
  * Abre el modal para registrar un nuevo paper
  * Inicializa palabras clave y roles automáticamente
@@ -1528,10 +1565,8 @@ async function abrirModalNuevoPaper() {
       'xl',
       '',
       false,
-      ()=>{
-        inicializarPalabrasClave();
-        if(typeof cargarRoles === 'function') cargarRoles();
-      });
+      initializePaperFormListeners
+      );
   } catch (error) {
     console.error('Error en abrirModalNuevoPaper:', error);
     Utils.showToast('No se pudo abrir el formulario.', 'danger');
@@ -1781,3 +1816,123 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('✅ PublishTracker inicializado correctamente');
 });
+// =============================================================================
+// MÓDULO DE GESTIÓN DE EDICIÓN DE REVISTA (VERSIÓN ACTUALIZADA)
+// =============================================================================
+
+const EditionManager = {
+  async check() {
+    // IDs tomados directamente de paper_accordion.html
+    const revistaId = document.getElementById('revistaSelect')?.value;
+    const anio = document.getElementById('anioPublicacion')?.value;
+    const volumen = document.getElementById('volumenRevista')?.value;
+    const numero = document.getElementById('numeroRevista')?.value;
+
+    const container = document.getElementById('edicionArchivosContainer');
+
+    // Solo proceder si los campos clave que definen una edición están llenos
+    if (!revistaId || !anio || !volumen || !numero) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = `<p class="text-center text-muted"><div class="spinner-border spinner-border-sm" role="status"></div> Verificando edición...</p>`;
+
+    try {
+      const url = `/journals/api/verificar-edicion/?revista_id=${revistaId}&anio=${anio}&volumen=${volumen}&numero=${numero}`;
+      const response = await fetch(url);
+
+      if (!response.ok) throw new Error(`Error del servidor: ${response.statusText}`);
+
+      const data = await response.json();
+
+      if (data.success) {
+        this.renderUI(data);
+      } else {
+        container.innerHTML = `<p class="text-danger">Error al verificar la edición: ${data.error || 'Desconocido'}</p>`;
+      }
+    } catch (error) {
+      console.error("Error en EditionManager.check:", error);
+      container.innerHTML = `<p class="text-danger">No se pudo conectar con el servidor.</p>`;
+    }
+  },
+
+  renderUI(data) {
+    const container = document.getElementById('edicionArchivosContainer');
+    let html = '';
+    const tiposRequeridos = ['Portada', 'Hoja Legal', 'Índice de Paper'];
+
+    if (data.edicion_existe) {
+      html += `<h6><i class="fas fa-check-circle text-success"></i> Edición Encontrada</h6>`;
+      html += `<p class="small text-muted mb-2">La documentación de esta edición se compartirá entre artículos.</p>`;
+
+      tiposRequeridos.forEach(tipo => {
+        const archivo = data.archivos[tipo]; // Ahora es un objeto {nombre, url}
+        const inputName = `archivo_edicion_${tipo.toLowerCase().replace(/\s+/g, '_')}`;
+
+        if (archivo) {
+          // --- ESTE BLOQUE ES LA LÓGICA NUEVA ---
+          html += `
+                        <div class="mb-2">
+                            <label class="form-label small">${tipo}:</label>
+                            
+                            <div id="info_${inputName}" class="alert alert-light p-2 small border d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-file-archive text-success me-2"></i>
+                                    <strong>${archivo.nombre}</strong>
+                                </span>
+                                <span>
+                                    <a href="${archivo.url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Ver archivo actual">Ver</a>
+                                    <button type="button" class="btn btn-sm btn-outline-warning py-0 px-1" title="Reemplazar archivo" onclick="EditionManager.toggleReplaceUI('${inputName}', true)">Reemplazar</button>
+                                </span>
+                            </div>
+
+                            <div id="upload_${inputName}" style="display: none;">
+                                <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
+                                <button type="button" class="btn btn-sm btn-link text-muted py-0" onclick="EditionManager.toggleReplaceUI('${inputName}', false)">Cancelar</button>
+                            </div>
+                        </div>`;
+          // --- FIN DEL BLOQUE NUEVO ---
+        } else {
+          // El código para archivos faltantes sigue igual
+          html += `
+                        <div class="mb-2">
+                            <label for="${inputName}" class="form-label small">${tipo}: <span class="text-danger">*</span></label>
+                            <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
+                        </div>`;
+        }
+      });
+    } else {
+      // El código para ediciones nuevas sigue igual
+      html += `<h6><i class="fas fa-star text-info"></i> Nueva Edición Detectada</h6>`;
+      html += `<p class="small text-muted mb-2">Por favor, adjunta los documentos. Se guardarán para futuros artículos.</p>`;
+
+      tiposRequeridos.forEach(tipo => {
+        const inputName = `archivo_edicion_${tipo.toLowerCase().replace(/\s+/g, '_')}`;
+        html += `
+                    <div class="mb-2">
+                        <label for="${inputName}" class="form-label small">${tipo}: <span class="text-danger">*</span></label>
+                        <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
+                    </div>`;
+      });
+    }
+
+    container.innerHTML = html;
+  },
+  toggleReplaceUI(baseName, showUpload) {
+    const infoDiv = document.getElementById(`info_${baseName}`);
+    const uploadDiv = document.getElementById(`upload_${baseName}`);
+
+    if (showUpload) {
+      infoDiv.style.display = 'none';
+      uploadDiv.style.display = 'block';
+    } else {
+      infoDiv.style.display = 'flex';
+      uploadDiv.style.display = 'none';
+      // Opcional: limpiar el input si cancelan
+      const fileInput = document.getElementById(baseName);
+      if (fileInput) fileInput.value = '';
+    }
+  }
+};

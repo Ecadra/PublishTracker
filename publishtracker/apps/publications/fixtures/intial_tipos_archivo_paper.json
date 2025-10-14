@@ -1,0 +1,18 @@
+[
+  {
+    "model": "publications.tipoarchivopaper",
+    "pk": 1,
+    "fields": {
+      "tipo": "Paper Completo",
+      "descripcion": "El archivo PDF principal del artículo científico completo."
+    }
+  },
+  {
+    "model": "publications.tipoarchivopaper",
+    "pk": 2,
+    "fields": {
+      "tipo": "Primera Pagina",
+      "descripcion": "Archivo que contiene únicamente la primera página del artículo, a menudo usada para resúmenes visuales."
+    }
+  }
+]
