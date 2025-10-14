@@ -1052,7 +1052,15 @@ const PaperManager = {
     const firstPage = document.getElementById('primeraPagina')?.files[0];
     if (paperFile) formData.append('archivo_paper', paperFile);
     if (firstPage) formData.append('primera_pagina', firstPage);
-
+    const editionFilesContainer = document.getElementById('edicionArchivosContainer');
+    if (editionFilesContainer) {
+        const editionFileInputs = editionFilesContainer.querySelectorAll('input[type="file"]');
+        editionFileInputs.forEach(input => {
+            if (input.files.length > 0) {
+                formData.append(input.name, input.files[0]);
+            }
+        });
+    }
     // Crear palabras clave nuevas
     await KeywordManager.createNewKeywords();
 
@@ -1861,7 +1869,7 @@ const EditionManager = {
   renderUI(data) {
     const container = document.getElementById('edicionArchivosContainer');
     let html = '';
-    const tiposRequeridos = ['Portada', 'Hoja Legal', 'Índice de Paper'];
+    const tiposRequeridos = ['Portada', 'Hoja Legal', 'Indice de Paper'];
 
     if (data.edicion_existe) {
       html += `<h6><i class="fas fa-check-circle text-success"></i> Edición Encontrada</h6>`;
