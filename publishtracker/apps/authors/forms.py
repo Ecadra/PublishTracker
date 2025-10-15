@@ -3,12 +3,19 @@
 from django import forms
 from .models import Autor
 
+
 class AutorForm(forms.ModelForm):
     """
-    Formulario para el modelo Autor.
-    Permite ingresar el nombre y el ORCID del autor,
-    aplicando validaciones y formateos definidos en el modelo.
+    Formulario de captura y validación para el modelo Autor.
+
+    Proporciona campos para nombre y ORCID, aplicando las reglas de
+    formateo y validación definidas en el propio modelo mediante sus
+    setters/getters.
+
+    Attributes:
+        Meta (type): Define `model`, `fields` y `widgets` del formulario.
     """
+
     class Meta:
         model = Autor
         fields = ['nombre', 'orcid']
@@ -26,7 +33,14 @@ class AutorForm(forms.ModelForm):
 
     def clean_nombre(self):
         """
-        Aplica el formateo del nombre usando el setter del modelo.
+        Normaliza y valida el campo `nombre` usando la lógica del modelo.
+
+        Usa el setter `Autor.set_nombre` para aplicar el formateo centralizado
+        en el modelo y devolver el valor ya normalizado.
+
+        Returns:
+            str | None: Nombre formateado si se proporcionó; de lo contrario,
+            el valor original (posiblemente `None`).
         """
         nombre = self.cleaned_data.get('nombre')
         if nombre:
@@ -37,8 +51,18 @@ class AutorForm(forms.ModelForm):
 
     def clean_orcid(self):
         """
-        Aplica el formateo y validación del ORCID usando el setter del modelo.
-        Lanza un error de validación si el ORCID no es válido.
+        Normaliza y valida el campo `orcid` usando la lógica del modelo.
+
+        Invoca `Autor.set_orcid` para validar formato y consistencia del
+        identificador, y `Autor.get_orcid` para retornar el valor formateado.
+
+        Returns:
+            str | None: ORCID formateado si se proporcionó; de lo contrario,
+            el valor original (posiblemente `None`).
+
+        Raises:
+            django.forms.ValidationError: Si el ORCID es inválido según las
+            reglas del modelo.
         """
         orcid = self.cleaned_data.get('orcid')
         if orcid:

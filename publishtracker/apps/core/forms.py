@@ -1,7 +1,19 @@
 from django import forms
 from .models import ProgramaSeciti, EjeSecithi
 
+
 class ProgramaSecitiForm(forms.ModelForm):
+    """
+    Formulario para la creación y edición de programas SECITI.
+
+    Permite capturar y validar los datos básicos de un programa, como
+    su nombre y descripción, aplicando estilos y placeholders
+    personalizados para mejorar la experiencia del usuario.
+
+    Attributes:
+        Meta (type): Define el modelo, campos y widgets del formulario.
+    """
+
     class Meta:
         model = ProgramaSeciti
         fields = ['nombre', 'descripcion']
@@ -17,7 +29,19 @@ class ProgramaSecitiForm(forms.ModelForm):
             }),
         }
 
+
 class EjeSecithiForm(forms.ModelForm):
+    """
+    Formulario para la creación y edición de ejes SECITHI.
+
+    Permite ingresar el nombre y la descripción de un eje de trabajo
+    dentro del programa SECITHI, garantizando una interfaz consistente
+    con el resto de formularios del sistema.
+
+    Attributes:
+        Meta (type): Define el modelo, campos y widgets del formulario.
+    """
+
     class Meta:
         model = EjeSecithi
         fields = ['nombre', 'descripcion']
