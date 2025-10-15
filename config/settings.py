@@ -31,7 +31,7 @@ ALLOWED_HOSTS = []
 # --- Version Control ---
 # Version actual de la aplicacion local.
 # Se compara con la ultima version en el repositorio de GitHub.
-CURRENT_VERSION = "v1.0.0" 
+CURRENT_VERSION = "v1.0.3" 
 # Repositorio de GitHub para verificar actualizaciones. Formato: 'owner/repo'
 GITHUB_REPO = "Ecadra/PublishTracker"
 # Application definition
@@ -88,6 +88,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'publishtracker.context_processors.update_checker',
             ],
         },
     },
