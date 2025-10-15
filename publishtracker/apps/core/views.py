@@ -166,13 +166,13 @@ def apply_update(request):
         )
 
         # 2. Asegurarse de estar en la rama principal (main o master)
-        print("Cambiando a la rama 'main'...")
-        subprocess.run(['git', 'checkout', 'main'], capture_output=True, text=True, cwd=project_root)
+        print("Cambiando a la rama 'master'...")
+        subprocess.run(['git', 'checkout', 'master'], capture_output=True, text=True, cwd=project_root)
 
         # 3. Forzar la actualización al estado del repositorio remoto (origin/main)
-        print("Forzando la actualización con 'git reset --hard origin/main'...")
+        print("Forzando la actualización con 'git reset --hard origin/master'...")
         reset_result = subprocess.run(
-            ['git', 'reset', '--hard', 'origin/main'],
+            ['git', 'reset', '--hard', 'origin/master'],
             capture_output=True, text=True, check=True, cwd=project_root
         )
         
