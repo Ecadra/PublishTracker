@@ -1238,7 +1238,7 @@ const EntityManager = {
     const entitiesForPaperForm = ['autor', 'programaSeciti', 'ejeSecithi', 'revista'];
 
     let reloadUrl, title, size;
-
+    let onRenderCallback = null;
     if (entitiesForPaperForm.includes(entityType)) {
       reloadUrl = `/modal/new-paper/?${this._getReloadParamName(entityType)}=${entityId}`;
       title = 'Registrar Nuevo Paper';
@@ -1528,7 +1528,7 @@ function mostrarAlertaPersonalizada(message, type, duration) {
  * Debe llamarse cada vez que el contenido del modal del paper se renderiza.
  */
 function initializePaperFormListeners() {
-    console.log("Inicializando listeners del formulario del paper...");
+    console.log("Inicializando listeners del formulario...");
     
     // Inicializadores de datos
     inicializarPalabrasClave();
@@ -1541,8 +1541,9 @@ function initializePaperFormListeners() {
     const numeroInput = document.getElementById('numeroRevista');
 
     if (revistaSelect && anioInput && volumenInput && numeroInput) {
-        // Eliminar listeners antiguos para evitar duplicados (buena práctica)
         const check = () => EditionManager.check();
+        
+        // Limpiar listeners antiguos para evitar duplicados
         revistaSelect.removeEventListener('change', check);
         anioInput.removeEventListener('blur', check);
         volumenInput.removeEventListener('blur', check);
@@ -1555,15 +1556,12 @@ function initializePaperFormListeners() {
         numeroInput.addEventListener('blur', check);
         
         console.log("Listeners de EditionManager adjuntados.");
-    } else {
-        console.warn("No se encontraron todos los elementos para el Asistente de Edición.");
     }
 }
+
 /**
  * Abre el modal para registrar un nuevo paper
- * Inicializa palabras clave y roles automáticamente
- * @async
- * @returns {Promise<void>}
+ * (Versión actualizada para usar el callback de inicialización)
  */
 async function abrirModalNuevoPaper() {
   try {
@@ -1573,14 +1571,13 @@ async function abrirModalNuevoPaper() {
       'xl',
       '',
       false,
-      initializePaperFormListeners
-      );
+      initializePaperFormListeners // <--- Pasamos la función como callback
+    );
   } catch (error) {
     console.error('Error en abrirModalNuevoPaper:', error);
     Utils.showToast('No se pudo abrir el formulario.', 'danger');
   }
 }
-
 // =============================================================================
 // ACTUALIZADORES DE SELECT
 // =============================================================================
@@ -1827,10 +1824,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // =============================================================================
 // MÓDULO DE GESTIÓN DE EDICIÓN DE REVISTA (VERSIÓN ACTUALIZADA)
 // =============================================================================
-
 const EditionManager = {
   async check() {
-    // IDs tomados directamente de paper_accordion.html
     const revistaId = document.getElementById('revistaSelect')?.value;
     const anio = document.getElementById('anioPublicacion')?.value;
     const volumen = document.getElementById('volumenRevista')?.value;
@@ -1838,7 +1833,7 @@ const EditionManager = {
 
     const container = document.getElementById('edicionArchivosContainer');
 
-    // Solo proceder si los campos clave que definen una edición están llenos
+    // Solo proceder si los campos clave están llenos
     if (!revistaId || !anio || !volumen || !numero) {
       container.style.display = 'none';
       return;
@@ -1850,15 +1845,13 @@ const EditionManager = {
     try {
       const url = `/journals/api/verificar-edicion/?revista_id=${revistaId}&anio=${anio}&volumen=${volumen}&numero=${numero}`;
       const response = await fetch(url);
-
       if (!response.ok) throw new Error(`Error del servidor: ${response.statusText}`);
 
       const data = await response.json();
-
       if (data.success) {
         this.renderUI(data);
       } else {
-        container.innerHTML = `<p class="text-danger">Error al verificar la edición: ${data.error || 'Desconocido'}</p>`;
+        container.innerHTML = `<p class="text-danger">Error: ${data.error || 'Desconocido'}</p>`;
       }
     } catch (error) {
       console.error("Error en EditionManager.check:", error);
@@ -1869,65 +1862,50 @@ const EditionManager = {
   renderUI(data) {
     const container = document.getElementById('edicionArchivosContainer');
     let html = '';
-    const tiposRequeridos = ['Portada', 'Hoja Legal', 'Indice de Paper'];
+    const tiposRequeridos = ['Portada', 'Hoja Legal', 'Índice de Paper'];
 
     if (data.edicion_existe) {
       html += `<h6><i class="fas fa-check-circle text-success"></i> Edición Encontrada</h6>`;
       html += `<p class="small text-muted mb-2">La documentación de esta edición se compartirá entre artículos.</p>`;
-
-      tiposRequeridos.forEach(tipo => {
-        const archivo = data.archivos[tipo]; // Ahora es un objeto {nombre, url}
-        const inputName = `archivo_edicion_${tipo.toLowerCase().replace(/\s+/g, '_')}`;
-
-        if (archivo) {
-          // --- ESTE BLOQUE ES LA LÓGICA NUEVA ---
-          html += `
-                        <div class="mb-2">
-                            <label class="form-label small">${tipo}:</label>
-                            
-                            <div id="info_${inputName}" class="alert alert-light p-2 small border d-flex justify-content-between align-items-center">
-                                <span>
-                                    <i class="fas fa-file-archive text-success me-2"></i>
-                                    <strong>${archivo.nombre}</strong>
-                                </span>
-                                <span>
-                                    <a href="${archivo.url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Ver archivo actual">Ver</a>
-                                    <button type="button" class="btn btn-sm btn-outline-warning py-0 px-1" title="Reemplazar archivo" onclick="EditionManager.toggleReplaceUI('${inputName}', true)">Reemplazar</button>
-                                </span>
-                            </div>
-
-                            <div id="upload_${inputName}" style="display: none;">
-                                <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
-                                <button type="button" class="btn btn-sm btn-link text-muted py-0" onclick="EditionManager.toggleReplaceUI('${inputName}', false)">Cancelar</button>
-                            </div>
-                        </div>`;
-          // --- FIN DEL BLOQUE NUEVO ---
-        } else {
-          // El código para archivos faltantes sigue igual
-          html += `
-                        <div class="mb-2">
-                            <label for="${inputName}" class="form-label small">${tipo}: <span class="text-danger">*</span></label>
-                            <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
-                        </div>`;
-        }
-      });
     } else {
-      // El código para ediciones nuevas sigue igual
       html += `<h6><i class="fas fa-star text-info"></i> Nueva Edición Detectada</h6>`;
-      html += `<p class="small text-muted mb-2">Por favor, adjunta los documentos. Se guardarán para futuros artículos.</p>`;
-
-      tiposRequeridos.forEach(tipo => {
-        const inputName = `archivo_edicion_${tipo.toLowerCase().replace(/\s+/g, '_')}`;
-        html += `
-                    <div class="mb-2">
-                        <label for="${inputName}" class="form-label small">${tipo}: <span class="text-danger">*</span></label>
-                        <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
-                    </div>`;
-      });
+      html += `<p class="small text-muted mb-2">Por favor, adjunta los documentos requeridos.</p>`;
     }
+
+    tiposRequeridos.forEach(tipo => {
+      const archivo = data.archivos[tipo]; // Objeto {nombre, url} o undefined
+      const inputName = `archivo_edicion_${tipo.toLowerCase().replace(/\s+/g, '_')}`;
+
+      if (archivo) {
+        // Si el archivo existe, mostramos la información y el botón de reemplazar
+        html += `
+          <div class="mb-2">
+            <label class="form-label small">${tipo}:</label>
+            <div id="info_${inputName}" class="alert alert-light p-2 small border d-flex justify-content-between align-items-center">
+              <span><i class="fas fa-file-archive text-success me-2"></i><strong>${archivo.nombre}</strong></span>
+              <span>
+                <a href="${archivo.url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Ver archivo">Ver</a>
+                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-1" title="Reemplazar" onclick="EditionManager.toggleReplaceUI('${inputName}', true)">Reemplazar</button>
+              </span>
+            </div>
+            <div id="upload_${inputName}" style="display: none;">
+              <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
+              <button type="button" class="btn btn-sm btn-link text-muted py-0" onclick="EditionManager.toggleReplaceUI('${inputName}', false)">Cancelar</button>
+            </div>
+          </div>`;
+      } else {
+        // Si el archivo no existe, mostramos el input para subirlo
+        html += `
+          <div class="mb-2">
+            <label for="${inputName}" class="form-label small">${tipo}: <span class="text-danger">*</span></label>
+            <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
+          </div>`;
+      }
+    });
 
     container.innerHTML = html;
   },
+
   toggleReplaceUI(baseName, showUpload) {
     const infoDiv = document.getElementById(`info_${baseName}`);
     const uploadDiv = document.getElementById(`upload_${baseName}`);
@@ -1938,9 +1916,8 @@ const EditionManager = {
     } else {
       infoDiv.style.display = 'flex';
       uploadDiv.style.display = 'none';
-      // Opcional: limpiar el input si cancelan
       const fileInput = document.getElementById(baseName);
-      if (fileInput) fileInput.value = '';
+      if (fileInput) fileInput.value = ''; // Limpiar el input si se cancela
     }
   }
 };

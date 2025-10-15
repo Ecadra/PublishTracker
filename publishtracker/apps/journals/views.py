@@ -246,14 +246,13 @@ def verificar_edicion(request):
     revista_id = request.GET.get('revista_id')
     anio = request.GET.get('anio')
     volumen = request.GET.get('volumen')
-    numero = request.GET.get('numero') # El número también es importante para la unicidad
+    numero = request.GET.get('numero')
 
-    # Validar que los parámetros necesarios están presentes
     if not all([revista_id, anio, volumen, numero]):
         return JsonResponse({'success': False, 'error': 'Parámetros incompletos'}, status=400)
 
     try:
-        # Buscamos la edición usando todos los campos que la hacen única
+        # Buscamos la edición
         edicion = EdicionRevista.objects.get(
             revista_id=revista_id,
             anio=anio,
@@ -264,21 +263,23 @@ def verificar_edicion(request):
         # Obtenemos los archivos que ya existen para esta edición
         archivos_existentes = ArchivoRevista.objects.filter(edicion=edicion).select_related('tipo_archivo')
         
+        # Creamos un diccionario para un acceso fácil en el frontend
         archivos = {
-             archivo.tipo_archivo.tipo: {
+            archivo.tipo_archivo.tipo: {
                 'nombre': archivo.nombre_archivo,
                 'url': archivo.archivo.url
             }
             for archivo in archivos_existentes
         }
-        print(archivos)
+
         return JsonResponse({
             'success': True,
             'edicion_existe': True,
-            'archivos': archivos
+            'archivos': archivos  # Devolvemos el diccionario de archivos
         })
 
     except EdicionRevista.DoesNotExist:
-        return JsonResponse({'success': True, 'edicion_existe': False})
+        # Si la edición no existe, no hay archivos
+        return JsonResponse({'success': True, 'edicion_existe': False, 'archivos': {}})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
