@@ -1,38 +1,43 @@
-# journals/views.py
 from django.shortcuts import render
 from django.http import JsonResponse
-from .forms import AmbitoRevistaForm, CategoriaRevistaForm, EditorialForm, PaisForm, RevistaForm
+from .forms import (
+    AmbitoRevistaForm,
+    CategoriaRevistaForm,
+    EditorialForm,
+    PaisForm,
+    RevistaForm,
+)
 from .models import ArchivoRevista, EdicionRevista, Editorial, CategoriaRevista, AmbitoRevista
 from core.models import Pais
 
 
 def modal_nueva_revista(request):
     """
-    Renderizar el modal para crear una revista.
-    Pasos:
-    1. Leer IDs de entidades recién creadas desde GET
-    2. Instanciar formulario base
-    3. Obtener listas iniciales de catálogos
-    4. Incorporar entidades nuevas a las listas si aplican
-    5. Preparar contexto con formulario y catálogos
-    6. Renderizar template del modal
+    Renderiza el modal para crear una nueva revista.
+
+    Crea una instancia de formulario vacía y recopila catálogos
+    necesarios (países, ámbitos, categorías, editoriales), incluyendo
+    entidades recién creadas si se reciben sus IDs por GET.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP entrante.
+
+    Returns:
+        HttpResponse: Modal renderizado con el formulario y catálogos.
     """
-    # 1. Leer IDs de entidades recién creadas desde GET
     nuevo_pais_id = request.GET.get('nuevo_pais_id')
     nueva_categoria_id = request.GET.get('nueva_categoria_id')
     nuevo_ambito_id = request.GET.get('nuevo_ambito_id')
     nueva_editorial_id = request.GET.get('nueva_editorial_id')
 
-    # 2. Instanciar formulario base
     form = RevistaForm()
 
-    # 3. Obtener listas iniciales de catálogos
     editoriales = Editorial.objects.all()
     categorias = CategoriaRevista.objects.all()
     ambitos = AmbitoRevista.objects.all()
     paises = Pais.objects.all()
 
-    # 4. Incorporar entidades nuevas a las listas si aplican
+    # Incluir entidades recién creadas si aplican
     if nuevo_pais_id:
         try:
             nuevo_pais = Pais.objects.get(id=nuevo_pais_id)
@@ -65,7 +70,6 @@ def modal_nueva_revista(request):
         except Editorial.DoesNotExist:
             pass
 
-    # 5. Preparar contexto con formulario y catálogos
     context = {
         'form': form,
         'editoriales': editoriales,
@@ -74,26 +78,26 @@ def modal_nueva_revista(request):
         'paises': paises,
     }
 
-    # 6. Renderizar template del modal
     return render(request, 'modals/nueva_revista_form.html', context)
 
 
 def guardar_revista(request):
     """
-    Guardar una revista desde el formulario.
-    Pasos:
-    1. Validar método HTTP POST
-    2. Instanciar y validar formulario
-    3. Guardar y retornar éxito con datos clave
-    4. Construir y retornar errores de validación
-    5. Retornar error por método no permitido
+    Guarda una nueva revista enviada desde el formulario.
+
+    Valida los datos del formulario y guarda la nueva revista si
+    los datos son válidos. Retorna los errores de validación en caso
+    contrario.
+
+    Args:
+        request (HttpRequest): Solicitud POST con los datos del formulario.
+
+    Returns:
+        JsonResponse: Resultado del proceso (éxito o errores).
     """
-    # 1. Validar método HTTP POST
     if request.method == 'POST':
-        # 2. Instanciar y validar formulario
         form = RevistaForm(request.POST)
         if form.is_valid():
-            # 3. Guardar y retornar éxito con datos clave
             nueva_revista = form.save()
             return JsonResponse({
                 'success': True,
@@ -104,7 +108,7 @@ def guardar_revista(request):
                     'issn_principal': nueva_revista.issn_principal,
                 }
             })
-        # 4. Construir y retornar errores de validación
+
         errors_dict = {field: [str(error) for error in error_list]
                        for field, error_list in form.errors.items()}
         return JsonResponse({
@@ -112,92 +116,80 @@ def guardar_revista(request):
             'message': 'Errores de validación en uno o más campos.',
             'errors': errors_dict
         })
-    # 5. Retornar error por método no permitido
+
     return JsonResponse({'success': False, 'message': 'Método no permitido.'})
 
 
 def modal_nuevo_pais(request):
     """
-    Renderizar el modal para crear un país.
-    Pasos:
-    1. Instanciar formulario
-    2. Preparar contexto
-    3. Renderizar template genérico
-    """
-    # 1. Instanciar formulario
-    form = PaisForm()
+    Renderiza el modal para crear un nuevo país.
 
-    # 2. Preparar contexto
+    Args:
+        request (HttpRequest): Solicitud HTTP entrante.
+
+    Returns:
+        HttpResponse: Modal renderizado con formulario de país.
+    """
+    form = PaisForm()
     context = {
         'form': form,
         'titulo_modal': 'Añadir Nuevo País',
         'accion_guardar': 'guardarPais',
     }
-
-    # 3. Renderizar template genérico
     return render(request, 'modals/formulario_generico.html', context)
 
 
 def modal_nueva_categoria(request):
     """
-    Renderizar el modal para crear una categoría de revista.
-    Pasos:
-    1. Instanciar formulario
-    2. Preparar contexto
-    3. Renderizar template genérico
-    """
-    # 1. Instanciar formulario
-    form = CategoriaRevistaForm()
+    Renderiza el modal para crear una categoría de revista.
 
-    # 2. Preparar contexto
+    Args:
+        request (HttpRequest): Solicitud HTTP entrante.
+
+    Returns:
+        HttpResponse: Modal renderizado con formulario de categoría.
+    """
+    form = CategoriaRevistaForm()
     context = {
         'form': form,
         'titulo_modal': 'Añadir Nueva Categoría de Revista',
         'accion_guardar': 'guardarCategoria',
     }
-
-    # 3. Renderizar template genérico
     return render(request, 'modals/formulario_generico.html', context)
 
 
 def modal_nuevo_ambito(request):
     """
-    Renderizar el modal para crear un ámbito de revista.
-    Pasos:
-    1. Instanciar formulario
-    2. Preparar contexto
-    3. Renderizar template genérico
-    """
-    # 1. Instanciar formulario
-    form = AmbitoRevistaForm()
+    Renderiza el modal para crear un nuevo ámbito de revista.
 
-    # 2. Preparar contexto
+    Args:
+        request (HttpRequest): Solicitud HTTP entrante.
+
+    Returns:
+        HttpResponse: Modal renderizado con formulario de ámbito.
+    """
+    form = AmbitoRevistaForm()
     context = {
         'form': form,
         'titulo_modal': 'Añadir Nuevo Ámbito de Revista',
         'accion_guardar': 'guardarAmbito',
     }
-
-    # 3. Renderizar template genérico
     return render(request, 'modals/formulario_generico.html', context)
 
 
 def guardar_pais(request):
     """
-    Guardar un país desde el formulario.
-    Pasos:
-    1. Validar método HTTP POST
-    2. Instanciar y validar formulario
-    3. Guardar y retornar éxito con datos clave
-    4. Construir y retornar errores de validación
-    5. Retornar error por método no permitido
+    Guarda un nuevo país desde el formulario.
+
+    Args:
+        request (HttpRequest): Solicitud POST con los datos del país.
+
+    Returns:
+        JsonResponse: Resultado del guardado (éxito o errores).
     """
-    # 1. Validar método HTTP POST
     if request.method == 'POST':
-        # 2. Instanciar y validar formulario
         form = PaisForm(request.POST)
         if form.is_valid():
-            # 3. Guardar y retornar éxito con datos clave
             nuevo_pais = form.save()
             return JsonResponse({
                 'success': True,
@@ -209,7 +201,6 @@ def guardar_pais(request):
                     'codigo_iso': nuevo_pais.codigo_iso,
                 }
             })
-        # 4. Construir y retornar errores de validación
         errors_dict = {field: [str(error) for error in error_list]
                        for field, error_list in form.errors.items()}
         return JsonResponse({
@@ -217,26 +208,22 @@ def guardar_pais(request):
             'message': 'Errores de validación en uno o más campos.',
             'errors': errors_dict
         })
-    # 5. Retornar error por método no permitido
     return JsonResponse({'success': False, 'message': 'Método no permitido.'})
 
 
 def guardar_categoria(request):
     """
-    Guardar una categoría de revista.
-    Pasos:
-    1. Validar método HTTP POST
-    2. Instanciar y validar formulario
-    3. Guardar y retornar éxito
-    4. Construir y retornar errores de validación
-    5. Retornar error por método no permitido
+    Guarda una nueva categoría de revista.
+
+    Args:
+        request (HttpRequest): Solicitud POST con los datos de la categoría.
+
+    Returns:
+        JsonResponse: Resultado del proceso.
     """
-    # 1. Validar método HTTP POST
     if request.method == 'POST':
-        # 2. Instanciar y validar formulario
         form = CategoriaRevistaForm(request.POST)
         if form.is_valid():
-            # 3. Guardar y retornar éxito
             nueva_categoria = form.save()
             return JsonResponse({
                 'success': True,
@@ -246,7 +233,6 @@ def guardar_categoria(request):
                     'nombre': nueva_categoria.nombre,
                 }
             })
-        # 4. Construir y retornar errores de validación
         errors_dict = {field: [str(error) for error in error_list]
                        for field, error_list in form.errors.items()}
         return JsonResponse({
@@ -254,26 +240,22 @@ def guardar_categoria(request):
             'message': 'Errores de validación en uno o más campos.',
             'errors': errors_dict
         })
-    # 5. Retornar error por método no permitido
     return JsonResponse({'success': False, 'message': 'Método no permitido.'})
 
 
 def guardar_ambito(request):
     """
-    Guardar un ámbito de revista.
-    Pasos:
-    1. Validar método HTTP POST
-    2. Instanciar y validar formulario
-    3. Guardar y retornar éxito
-    4. Construir y retornar errores de validación
-    5. Retornar error por método no permitido
+    Guarda un nuevo ámbito de revista.
+
+    Args:
+        request (HttpRequest): Solicitud POST con los datos del ámbito.
+
+    Returns:
+        JsonResponse: Resultado del proceso.
     """
-    # 1. Validar método HTTP POST
     if request.method == 'POST':
-        # 2. Instanciar y validar formulario
         form = AmbitoRevistaForm(request.POST)
         if form.is_valid():
-            # 3. Guardar y retornar éxito
             nuevo_ambito = form.save()
             return JsonResponse({
                 'success': True,
@@ -283,7 +265,6 @@ def guardar_ambito(request):
                     'nombre': nuevo_ambito.nombre,
                 }
             })
-        # 4. Construir y retornar errores de validación
         errors_dict = {field: [str(error) for error in error_list]
                        for field, error_list in form.errors.items()}
         return JsonResponse({
@@ -291,49 +272,42 @@ def guardar_ambito(request):
             'message': 'Errores de validación en uno o más campos.',
             'errors': errors_dict
         })
-    # 5. Retornar error por método no permitido
     return JsonResponse({'success': False, 'message': 'Método no permitido.'})
 
 
 def modal_nueva_editorial(request):
     """
-    Renderizar el modal para crear una editorial.
-    Pasos:
-    1. Instanciar formulario
-    2. Preparar contexto incluyendo países
-    3. Renderizar template genérico
-    """
-    # 1. Instanciar formulario
-    form = EditorialForm()
+    Renderiza el modal para crear una nueva editorial.
 
-    # 2. Preparar contexto incluyendo países
+    Args:
+        request (HttpRequest): Solicitud HTTP entrante.
+
+    Returns:
+        HttpResponse: Modal renderizado con formulario de editorial.
+    """
+    form = EditorialForm()
     context = {
         'form': form,
         'titulo_modal': 'Añadir Nueva Editorial',
         'accion_guardar': 'guardarEditorial',
         'paises': Pais.objects.all(),
     }
-
-    # 3. Renderizar template genérico
     return render(request, 'modals/formulario_generico.html', context)
 
 
 def guardar_editorial(request):
     """
-    Guardar una editorial.
-    Pasos:
-    1. Validar método HTTP POST
-    2. Instanciar y validar formulario
-    3. Guardar y retornar éxito
-    4. Construir y retornar errores de validación
-    5. Retornar error por método no permitido
+    Guarda una nueva editorial.
+
+    Args:
+        request (HttpRequest): Solicitud POST con los datos de la editorial.
+
+    Returns:
+        JsonResponse: Resultado del guardado (éxito o errores).
     """
-    # 1. Validar método HTTP POST
     if request.method == 'POST':
-        # 2. Instanciar y validar formulario
         form = EditorialForm(request.POST)
         if form.is_valid():
-            # 3. Guardar y retornar éxito
             nueva_editorial = form.save()
             return JsonResponse({
                 'success': True,
@@ -343,7 +317,6 @@ def guardar_editorial(request):
                     'nombre': nueva_editorial.nombre,
                 }
             })
-        # 4. Construir y retornar errores de validación
         errors_dict = {field: [str(error) for error in error_list]
                        for field, error_list in form.errors.items()}
         return JsonResponse({
@@ -351,35 +324,31 @@ def guardar_editorial(request):
             'message': 'Errores de validación en uno o más campos.',
             'errors': errors_dict
         })
-    # 5. Retornar error por método no permitido
     return JsonResponse({'success': False, 'message': 'Método no permitido.'})
 
 
 def verificar_edicion(request):
     """
-    Verificar existencia de edición y listar archivos asociados.
-    Pasos:
-    1. Leer parámetros requeridos desde GET
-    2. Validar integridad de parámetros
-    3. Consultar edición específica
-    4. Consultar archivos existentes relacionados
-    5. Construir diccionario {tipo: {nombre, url}}
-    6. Retornar JSON con estado y archivos
-    7. Manejar ausencia de edición
-    8. Manejar errores inesperados
+    Verifica si una edición de revista ya existe y lista sus archivos.
+
+    Busca la edición específica basada en revista, año, volumen y número,
+    y retorna los archivos existentes relacionados.
+
+    Args:
+        request (HttpRequest): Solicitud GET con parámetros de búsqueda.
+
+    Returns:
+        JsonResponse: Resultado con estado de existencia y archivos asociados.
     """
-    # 1. Leer parámetros requeridos desde GET
     revista_id = request.GET.get('revista_id')
     anio = request.GET.get('anio')
     volumen = request.GET.get('volumen')
     numero = request.GET.get('numero')
 
-    # 2. Validar integridad de parámetros
     if not all([revista_id, anio, volumen, numero]):
         return JsonResponse({'success': False, 'error': 'Parámetros incompletos'}, status=400)
 
     try:
-        # 3. Consultar edición específica
         edicion = EdicionRevista.objects.get(
             revista_id=revista_id,
             anio=anio,
@@ -387,14 +356,7 @@ def verificar_edicion(request):
             numero=numero
         )
 
-        # 4. Consultar archivos existentes relacionados
-        archivos_existentes = (
-            ArchivoRevista.objects
-            .filter(edicion=edicion)
-            .select_related('tipo_archivo')
-        )
-
-        # 5. Construir diccionario {tipo: {nombre, url}}
+        archivos_existentes = ArchivoRevista.objects.filter(edicion=edicion).select_related('tipo_archivo')
         archivos = {
             archivo.tipo_archivo.tipo: {
                 'nombre': archivo.nombre_archivo,
@@ -403,7 +365,6 @@ def verificar_edicion(request):
             for archivo in archivos_existentes
         }
 
-        # 6. Retornar JSON con estado y archivos
         return JsonResponse({
             'success': True,
             'edicion_existe': True,
@@ -411,9 +372,7 @@ def verificar_edicion(request):
         })
 
     except EdicionRevista.DoesNotExist:
-        # 7. Manejar ausencia de edición
         return JsonResponse({'success': True, 'edicion_existe': False, 'archivos': {}})
 
     except Exception as e:
-        # 8. Manejar errores inesperados
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

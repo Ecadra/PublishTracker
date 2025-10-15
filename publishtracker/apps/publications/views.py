@@ -1,21 +1,19 @@
-# paper_list_view/views.py
 import os
 import json
 import requests
-
 from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.db import transaction
 from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
 from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.views.decorators.http import require_http_methods
 
-from publications.models import Paper
+from publications.models import Paper, PaperAutor
 from authors.models import Rol, Autor, RolAutor
-from publications.models import PaperAutor
-from .models import ArchivoPaper, PalabraClave, PaperPalabraClave, TipoArchivoPaper
+from publications.models import ArchivoPaper, PalabraClave, PaperPalabraClave, TipoArchivoPaper
 from core.models import EstatusPublicacion, ProgramaSeciti, EjeSecithi
 from journals.models import ArchivoRevista, Revista, EdicionRevista, TipoArchivoRevista
 
@@ -23,19 +21,22 @@ from journals.models import ArchivoRevista, Revista, EdicionRevista, TipoArchivo
 @require_http_methods(["POST"])
 def create_paper(request):
     """
-    Crear un Paper y sus relaciones de forma atómica.
-    Pasos:
-    1. Validar revista y obtener/crear edición
-    2. Guardar archivos de la edición (portada, hoja legal, índice)
-    3. Validar estatus y crear el Paper
-    4. Clonar archivos de la edición al directorio del Paper
-    5. Guardar archivos propios del Paper (PDF, primera página)
-    6. Registrar autores con su rol y orden
-    7. Registrar palabras clave (crear si no existen)
-    8. Retornar respuesta exitosa
+    Crea un nuevo Paper y todas sus relaciones asociadas de forma atómica.
+
+    El proceso incluye:
+    - Validación de revista y creación/obtención de su edición.
+    - Registro y copia de archivos relacionados con la edición.
+    - Creación del Paper principal con sus metadatos.
+    - Asociación de autores, palabras clave y archivos específicos del Paper.
+
+    Args:
+        request (HttpRequest): Solicitud POST que contiene datos del paper, autores,
+            archivos y palabras clave.
+
+    Returns:
+        JsonResponse: Respuesta JSON indicando éxito o errores de validación.
     """
     try:
-        # 1. Validar revista y obtener/crear edición
         with transaction.atomic():
             revista_id = request.POST.get('revista')
             if not revista_id:
@@ -51,7 +52,6 @@ def create_paper(request):
                 defaults={'indice_revista': request.POST.get('indice_revista')}
             )
 
-            # 2. Guardar archivos de la edición (portada, hoja legal, índice)
             tipos_archivo_revista_map = {
                 'archivo_edicion_portada': 'Portada',
                 'archivo_edicion_hoja_legal': 'Hoja Legal',
@@ -69,7 +69,6 @@ def create_paper(request):
                         }
                     )
 
-            # 3. Validar estatus y crear el Paper
             estatus_id = request.POST.get('estatus_publicacion')
             if not estatus_id:
                 raise ValueError("El estatus de publicación es requerido.")
@@ -98,16 +97,26 @@ def create_paper(request):
 
             paper = Paper.objects.create(**paper_data)
 
-            # 4. Clonar archivos de la edición al directorio del Paper
-            clone_dir = os.path.join(str(edicion.anio), str(revista.id), str(paper.id), 'archivos_revista')
+            # Se define la ruta relativa donde se guardarán las copias.
+            clone_dir_relative = os.path.join(str(edicion.anio), str(revista.id), str(paper.id), 'archivos_revista')
             archivos_de_la_edicion = ArchivoRevista.objects.filter(edicion=edicion)
+            
             for archivo_revista in archivos_de_la_edicion:
-                nombre_archivo_guardado = os.path.basename(archivo_revista.archivo.name)
-                destination_path = os.path.join(clone_dir, nombre_archivo_guardado)
-                with archivo_revista.archivo.open('rb') as original_file:
-                    default_storage.save(destination_path, original_file)
+                # Se abre y lee el contenido del archivo original de la revista.
+                archivo_revista.archivo.open('rb')
+                original_file_content = archivo_revista.archivo.read()
+                archivo_revista.archivo.close()
 
-            # 5. Guardar archivos propios del Paper (PDF, primera página)
+                # Se obtiene el nombre base del archivo original.
+                nombre_base = os.path.basename(archivo_revista.archivo.name)
+                
+                # Se define la ruta de destino completa para la copia.
+                destination_path = os.path.join(clone_dir_relative, nombre_base)
+                
+                # Se guarda el contenido leído en la nueva ubicación usando ContentFile.
+                # Este método es más seguro y maneja la creación de directorios.
+                default_storage.save(destination_path, ContentFile(original_file_content))
+
             tipos_archivo_paper_map = {
                 'archivo_paper': 'Paper Completo',
                 'primera_pagina': 'Primera Pagina',
@@ -122,7 +131,6 @@ def create_paper(request):
                         nombre_archivo=request.FILES[field_name].name
                     )
 
-            # 6. Registrar autores con su rol y orden
             autores = json.loads(request.POST.get('autores', '[]'))
             if not autores:
                 raise ValueError("Debe seleccionar al menos un autor.")
@@ -137,7 +145,6 @@ def create_paper(request):
                     rol_autor=rol_autor
                 )
 
-            # 7. Registrar palabras clave (crear si no existen)
             palabras_clave = json.loads(request.POST.get('palabras_clave', '[]'))
             for palabra_data in palabras_clave:
                 palabra_obj, _ = PalabraClave.objects.get_or_create(
@@ -146,7 +153,6 @@ def create_paper(request):
                 )
                 PaperPalabraClave.objects.create(paper=paper, palabra_clave=palabra_obj)
 
-            # 8. Retornar respuesta exitosa
             return JsonResponse({
                 'success': True,
                 'message': 'Paper y todos sus archivos han sido guardados exitosamente.',
@@ -164,25 +170,21 @@ def create_paper(request):
 @require_http_methods(["POST"])
 def create_keywords(request):
     """
-    Crear una nueva palabra clave (JSON).
-    Pasos:
-    1. Leer y validar nombre desde el cuerpo JSON
-    2. Verificar existencia case-insensitive
-    3. Retornar existente si ya está registrado
-    4. Crear palabra clave y retornar datos
-    5. Manejar errores de JSON y excepciones
+    Crea una nueva palabra clave mediante JSON.
+
+    Args:
+        request (HttpRequest): Solicitud POST con JSON que contiene el campo `nombre`.
+
+    Returns:
+        JsonResponse: Objeto JSON con el resultado de la creación o error.
     """
     try:
-        # 1. Leer y validar nombre desde el cuerpo JSON
         data = json.loads(request.body)
         nombre = data.get('nombre', '').strip().lower()
         if not nombre:
             return JsonResponse({'success': False, 'message': 'El nombre de la palabra clave es requerido'}, status=400)
 
-        # 2. Verificar existencia case-insensitive
         palabra_existente = PalabraClave.objects.filter(nombre__iexact=nombre).first()
-
-        # 3. Retornar existente si ya está registrado
         if palabra_existente:
             return JsonResponse({
                 'success': True,
@@ -190,7 +192,6 @@ def create_keywords(request):
                 'message': 'La palabra clave ya existe'
             })
 
-        # 4. Crear palabra clave y retornar datos
         palabra_nueva = PalabraClave.objects.create(nombre=nombre)
         return JsonResponse({
             'success': True,
@@ -199,7 +200,6 @@ def create_keywords(request):
         })
 
     except json.JSONDecodeError:
-        # 5. Manejar errores de JSON y excepciones
         return JsonResponse({'success': False, 'message': 'Error al decodificar JSON'}, status=400)
     except Exception as e:
         import traceback
@@ -214,19 +214,17 @@ def create_keywords(request):
 
 def paper_list_view(request):
     """
-    Listar papers con filtros y paginación.
-    Pasos:
-    0. Buscar actualizaciones de releases con la API de github
-    1. Construir query base optimizada (select_related/prefetch)
-    2. Leer filtros de búsqueda, estatus y año
-    3. Convertir filtros a tipos adecuados
-    4. Aplicar filtros al queryset
-    5. Ordenar por año y fecha de creación
-    6. Paginar resultados
-    7. Preparar listas de filtros y datos extra
-    8. Renderizar template con el contexto
+    Lista los papers con filtros de búsqueda, año, estatus y paginación.
+
+    También verifica actualizaciones del repositorio en GitHub y muestra
+    notificaciones si hay una nueva versión disponible.
+
+    Args:
+        request (HttpRequest): Solicitud GET con filtros opcionales `search`, `status` y `year`.
+
+    Returns:
+        HttpResponse: Página renderizada con la lista de papers.
     """
-    #0. Buscar actualizaciones
     update_info = None
     try:
         api_url = f"https://api.github.com/repos/{settings.GITHUB_REPO}/releases/latest"
@@ -240,10 +238,8 @@ def paper_list_view(request):
                     'url': data.get('html_url')
                 }
     except requests.RequestException:
-        # Si hay un error de red (sin conexión, etc.), simplemente no se muestra la notificación.
         print("Advertencia: No se pudo conectar a la API de GitHub para verificar actualizaciones.")
-    
-    # 1. Construir query base optimizada (select_related/prefetch)
+
     papers_query = Paper.objects.select_related(
         'edicion__revista',
         'estatus_publicacion',
@@ -256,27 +252,20 @@ def paper_list_view(request):
         )
     )
 
-    # 2. Leer filtros de búsqueda, estatus y año
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
     year_filter = request.GET.get('year', '')
 
-    # 3. Convertir filtros a tipos adecuados
-    status_filter_int = None
-    if status_filter:
-        try:
-            status_filter_int = int(status_filter)
-        except ValueError:
-            status_filter_int = None
+    try:
+        status_filter_int = int(status_filter) if status_filter else None
+    except ValueError:
+        status_filter_int = None
 
-    year_filter_int = None
-    if year_filter:
-        try:
-            year_filter_int = int(year_filter)
-        except ValueError:
-            year_filter_int = None
+    try:
+        year_filter_int = int(year_filter) if year_filter else None
+    except ValueError:
+        year_filter_int = None
 
-    # 4. Aplicar filtros al queryset
     if search_query:
         papers_query = papers_query.filter(
             Q(titulo__icontains=search_query) |
@@ -288,15 +277,12 @@ def paper_list_view(request):
     if year_filter_int:
         papers_query = papers_query.filter(anio_publicacion=year_filter_int)
 
-    # 5. Ordenar por año y fecha de creación
     papers_query = papers_query.order_by('-anio_publicacion', '-fecha_creacion')
 
-    # 6. Paginar resultados
     paginator = Paginator(papers_query, 10)
     page_number = request.GET.get('page')
     papers = paginator.get_page(page_number)
 
-    # 7. Preparar listas de filtros y datos extra
     status_list = EstatusPublicacion.objects.all().order_by('estatus')
     years_list = Paper.objects.values_list('anio_publicacion', flat=True).distinct().order_by('-anio_publicacion')
 
@@ -313,61 +299,50 @@ def paper_list_view(request):
         'palabras_clave_json': json.dumps(list(PalabraClave.objects.all().values('id', 'nombre')))
     }
 
-    # 8. Renderizar template con el contexto
     return render(request, 'publications/paper_list_template.html', context)
 
 
 @require_http_methods(["GET"])
 def get_palabras_clave(request):
     """
-    Obtener todas las palabras clave.
-    Pasos:
-    1. Consultar todas las palabras clave
-    2. Convertir a lista serializable
-    3. Retornar JsonResponse con éxito
-    4. Manejar errores con status 500
+    Devuelve todas las palabras clave existentes en formato JSON.
+
+    Args:
+        request (HttpRequest): Solicitud GET.
+
+    Returns:
+        JsonResponse: Lista de palabras clave o error.
     """
     try:
-        # 1. Consultar todas las palabras clave
         palabras = PalabraClave.objects.all().values('id', 'nombre')
-
-        # 2. Convertir a lista serializable
-        palabras_list = list(palabras)
-
-        # 3. Retornar JsonResponse con éxito
-        return JsonResponse({'success': True, 'palabras_clave': palabras_list})
+        return JsonResponse({'success': True, 'palabras_clave': list(palabras)})
     except Exception as e:
-        # 4. Manejar errores con status 500
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 def get_new_paper_modal_content(request):
     """
-    Renderizar el contenido del modal para crear Paper.
-    Pasos:
-    1. Leer IDs de entidades recién creadas desde GET
-    2. Consultar catálogos base (estatus, revistas, roles, autores)
-    3. Consultar programas y ejes SECITI/SECITHI
-    4. Asegurar inclusión de nuevas entidades si aplican
-    5. Construir contexto con catálogos y roles en JSON
-    6. Renderizar template del acordeón
+    Renderiza el contenido dinámico del modal para crear un nuevo Paper.
+
+    Incluye catálogos como estatus, revistas, autores, roles, programas y ejes SECITI/SECITHI.
+
+    Args:
+        request (HttpRequest): Solicitud GET que puede incluir IDs de nuevas entidades.
+
+    Returns:
+        HttpResponse: Template renderizado con los catálogos del formulario.
     """
-    # 1. Leer IDs de entidades recién creadas desde GET
     nuevo_autor_id = request.GET.get('nuevo_autor_id')
     nuevo_programa_id = request.GET.get('nuevo_programa_id')
     nuevo_eje_id = request.GET.get('nuevo_eje_id')
 
-    # 2. Consultar catálogos base (estatus, revistas, roles, autores)
     estatus_publicaciones = EstatusPublicacion.objects.all()
     revistas = Revista.objects.all()
     roles = Rol.objects.all()
     autores = Autor.objects.all()
-
-    # 3. Consultar programas y ejes SECITI/SECITHI
     programas_seciti = ProgramaSeciti.objects.all()
     ejes_secithi = EjeSecithi.objects.all()
 
-    # 4. Asegurar inclusión de nuevas entidades si aplican
     if nuevo_autor_id:
         try:
             nuevo_autor = Autor.objects.get(id=nuevo_autor_id)
@@ -390,7 +365,6 @@ def get_new_paper_modal_content(request):
         except EjeSecithi.DoesNotExist:
             pass
 
-    # 5. Construir contexto con catálogos y roles en JSON
     context = {
         'estatus_publicaciones': estatus_publicaciones,
         'programas_seciti': programas_seciti,
@@ -400,5 +374,59 @@ def get_new_paper_modal_content(request):
         'roles_json': json.dumps(list(roles.values('id', 'nombre_rol', 'descripcion'))),
     }
 
-    # 6. Renderizar template del acordeón
     return render(request, 'modals/paper_accordion.html', context)
+def paper_detail_view(request, paper_id):
+    """
+    Muestra los detalles completos de un paper en un modal.
+    """
+    print(f"DEBUG: Buscando paper con ID: {paper_id}")
+    paper = get_object_or_404(
+        Paper.objects.select_related(
+            'edicion__revista',
+            'estatus_publicacion',
+            'programa',
+            'eje_secithi'
+        ).prefetch_related(
+            Prefetch(
+                'paperautor_set',
+                queryset=PaperAutor.objects.select_related('autor', 'rol_autor__rol').order_by('orden_autor'),
+                to_attr='autores_ordenados'
+            ),
+            'paperpalabraclave_set__palabra_clave',
+            'archivos__tipo_archivo'
+        ),
+        id=paper_id
+    )
+    print(f"DEBUG: Paper encontrado: '{paper.titulo}'")
+
+    # Obtener los archivos de la edición de la revista que fueron clonados
+    archivos_edicion_clonados = []
+    clone_dir_relative = os.path.join(str(paper.edicion.anio), str(paper.edicion.revista.id), str(paper.id), 'archivos_revista')
+    clone_dir_full = os.path.join(settings.MEDIA_ROOT, clone_dir_relative)
+    print(f"DEBUG: Buscando archivos de revista clonados en: {clone_dir_full}")
+
+    if os.path.isdir(clone_dir_full):
+        # Mapear los tipos de archivo originales para obtener sus nombres
+        archivos_revista_originales = ArchivoRevista.objects.filter(edicion=paper.edicion).select_related('tipo_archivo')
+        tipos_por_nombre_archivo = {os.path.basename(ar.archivo.name): ar.tipo_archivo for ar in archivos_revista_originales}
+        print(f"DEBUG: Mapeo de archivos originales: {tipos_por_nombre_archivo}")
+
+        for filename in os.listdir(clone_dir_full):
+            tipo_archivo_obj = tipos_por_nombre_archivo.get(filename)
+            if tipo_archivo_obj:
+                archivos_edicion_clonados.append({
+                    'tipo_archivo': tipo_archivo_obj,
+                    'archivo': {
+                        'url': os.path.join(settings.MEDIA_URL, clone_dir_relative, filename)
+                    }
+                })
+        print(f"DEBUG: Archivos de edición clonados encontrados: {len(archivos_edicion_clonados)}")
+    else:
+        print("DEBUG: El directorio de archivos clonados no existe.")
+
+
+    context = {
+        'paper': paper,
+        'archivos_edicion': archivos_edicion_clonados,
+    }
+    return render(request, 'modals/paper_detail.html', context)

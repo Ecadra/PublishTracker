@@ -1,4 +1,3 @@
-# catalogs/models.py
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator
@@ -7,8 +6,20 @@ from django.core.validators import MinValueValidator
 class CatalogoBase(models.Model):
     """
     Clase base abstracta para catálogos del sistema.
-    Define estructura común y consistencia en tablas maestras.
+
+    Define una estructura estandarizada para tablas maestras, incluyendo
+    campos comunes como `nombre`, `clave`, `activo`, y fechas de control.
+
+    Attributes:
+        nombre (str): Nombre descriptivo del elemento.
+        clave (str): Identificador único alfanumérico.
+        activo (bool): Indica si el elemento está disponible para uso.
+        orden (int): Valor numérico para ordenamiento (menor = mayor prioridad).
+        descripcion (str): Información adicional del elemento.
+        fecha_creacion (datetime): Fecha de creación del registro.
+        fecha_modificacion (datetime): Fecha de última modificación.
     """
+
     nombre = models.CharField(
         max_length=100,
         verbose_name="Nombre",
@@ -40,19 +51,30 @@ class CatalogoBase(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed=True
+        managed = True
         abstract = True
         ordering = ["orden", "nombre"]
 
     def __str__(self):
+        """Retorna el nombre legible del catálogo."""
         return self.nombre
 
     @property
     def activo_display(self):
+        """
+        Devuelve una representación legible del estado activo.
+
+        Returns:
+            str: "Activo" si el elemento está habilitado, "Inactivo" si no.
+        """
         return "Activo" if self.activo else "Inactivo"
 
     def clean(self):
-        """Normaliza datos antes de guardar"""
+        """
+        Normaliza los valores de los campos antes de guardar.
+
+        Ajusta capitalización y elimina espacios innecesarios.
+        """
         if self.nombre:
             self.nombre = self.nombre.strip().title()
         if self.clave:
@@ -60,7 +82,14 @@ class CatalogoBase(models.Model):
 
 
 class TipoParticipacion(CatalogoBase):
-    """Catálogo de tipos de participación en papers"""
+    """
+    Catálogo de tipos de participación en publicaciones académicas.
+
+    Indica si un tipo de participación requiere documentación adicional.
+    
+    Attributes:
+        requiere_justificacion (bool): Determina si se requiere justificación.
+    """
     requiere_justificacion = models.BooleanField(
         default=False,
         verbose_name="Requiere Justificación",
@@ -69,7 +98,16 @@ class TipoParticipacion(CatalogoBase):
 
 
 class TipoCita(CatalogoBase):
-    """Catálogo de tipos de citas bibliográficas"""
+    """
+    Catálogo de tipos de citas bibliográficas.
+
+    Cada tipo de cita incluye un color asociado y un peso métrico
+    utilizado en el cálculo de impacto.
+    
+    Attributes:
+        color_interfaz (str): Código hexadecimal del color.
+        peso_metrico (Decimal): Factor de ponderación (0–9.99).
+    """
     color_interfaz = models.CharField(
         max_length=7,
         default="#007bff",
@@ -86,7 +124,17 @@ class TipoCita(CatalogoBase):
 
 
 class FormatoArchivo(CatalogoBase):
-    """Catálogo de formatos de archivo"""
+    """
+    Catálogo de formatos de archivo aceptados en el sistema.
+
+    Define las extensiones, tipos MIME y límites de tamaño máximo
+    para los archivos que se pueden subir.
+
+    Attributes:
+        extension (str): Extensión del archivo sin punto inicial.
+        mime_type (str): Tipo MIME (por ejemplo, 'application/pdf').
+        tamaño_maximo_mb (int): Tamaño máximo permitido en MB.
+    """
     extension = models.CharField(
         max_length=10,
         verbose_name="Extensión",
@@ -103,16 +151,27 @@ class FormatoArchivo(CatalogoBase):
         help_text="Límite en megabytes"
     )
 
-    
-
     def clean(self):
-        """Normaliza la extensión (sin punto)"""
+        """
+        Normaliza la extensión antes de guardar.
+
+        Elimina puntos y convierte a minúsculas.
+        """
         if self.extension:
             self.extension = self.extension.strip().lower().replace(".", "")
 
 
 class AreaConocimiento(CatalogoBase):
-    """Catálogo jerárquico de áreas del conocimiento"""
+    """
+    Catálogo jerárquico de áreas del conocimiento.
+
+    Permite definir una estructura padre-hijo para representar
+    la jerarquía entre áreas científicas o académicas.
+
+    Attributes:
+        area_padre (AreaConocimiento): Área de conocimiento superior.
+        codigo_externo (str): Código externo (por ejemplo, CONACYT o UNESCO).
+    """
     area_padre = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -129,11 +188,14 @@ class AreaConocimiento(CatalogoBase):
         help_text="Código de clasificación externa (CONACYT, UNESCO, etc.)"
     )
 
-
-
     @property
     def nivel_jerarquia(self):
-        """Nivel jerárquico del área (0 = raíz)"""
+        """
+        Calcula el nivel jerárquico del área.
+
+        Returns:
+            int: Nivel en la jerarquía (0 para áreas raíz).
+        """
         nivel, area_actual = 0, self.area_padre
         while area_actual is not None:
             nivel += 1
@@ -142,7 +204,17 @@ class AreaConocimiento(CatalogoBase):
 
 
 class Institucion(CatalogoBase):
-    """Catálogo de instituciones académicas y de investigación"""
+    """
+    Catálogo de instituciones académicas y de investigación.
+
+    Incluye universidades, centros de investigación y organismos públicos
+    o privados, asociándolos a un país.
+
+    Attributes:
+        tipo_institucion (str): Tipo de institución (por ejemplo, 'UNIVERSIDAD').
+        pais (Pais): País al que pertenece la institución.
+        sitio_web (str): URL del sitio web institucional.
+    """
     TIPOS_INSTITUCION = [
         ("UNIVERSIDAD", "Universidad"),
         ("CENTRO_INVESTIGACION", "Centro de Investigación"),
@@ -167,11 +239,19 @@ class Institucion(CatalogoBase):
         verbose_name="Sitio Web"
     )
 
-    
-
 
 class FuenteFinanciamiento(CatalogoBase):
-    """Catálogo de fuentes de financiamiento para investigación"""
+    """
+    Catálogo de fuentes de financiamiento para investigación.
+
+    Define las posibles fuentes de apoyo económico para proyectos
+    académicos, empresariales o gubernamentales.
+
+    Attributes:
+        tipo_fuente (str): Tipo de fuente (Gubernamental, Internacional, etc.).
+        monto_maximo (Decimal): Monto máximo típico en pesos mexicanos.
+        vigente (bool): Indica si la fuente está disponible actualmente.
+    """
     TIPOS_FUENTE = [
         ("GUBERNAMENTAL", "Gubernamental"),
         ("INTERNACIONAL", "Internacional"),
@@ -197,5 +277,3 @@ class FuenteFinanciamiento(CatalogoBase):
         verbose_name="Vigente",
         help_text="Si la fuente está actualmente disponible"
     )
-
-    

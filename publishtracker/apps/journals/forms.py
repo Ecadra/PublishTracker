@@ -1,10 +1,20 @@
-# journals/forms.py
 from django import forms
 from .models import Revista, Editorial, CategoriaRevista, AmbitoRevista
 from core.models import Pais
 
 
 class RevistaForm(forms.ModelForm):
+    """
+    Formulario para la creación y edición de revistas académicas.
+
+    Permite registrar o modificar la información general de una revista,
+    incluyendo ISSN, país de publicación, editorial, categoría y otros
+    campos relacionados.
+
+    Attributes:
+        Meta (type): Define el modelo `Revista`, sus campos y widgets asociados.
+    """
+
     class Meta:
         model = Revista
         fields = [
@@ -53,15 +63,13 @@ class RevistaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         """
-        Inicializar el formulario de Revista.
-        Pasos:
-        1. Llamar al inicializador de la clase base
-        2. Configurar QuerySets opcionales (si aplica)
-        """
-        # 1. Llamar al inicializador de la clase base
-        super().__init__(*args, **kwargs)
+        Inicializa el formulario `RevistaForm`.
 
-        # 2. Configurar QuerySets opcionales (si aplica)
+        Configura los conjuntos de datos (QuerySets) de los campos selectivos,
+        si se requiere, filtrando únicamente los registros activos.
+        """
+        super().__init__(*args, **kwargs)
+        # Ejemplo de configuración opcional:
         # self.fields['editorial'].queryset = Editorial.objects.filter(activo=True)
         # self.fields['categoria'].queryset = CategoriaRevista.objects.filter(activo=True)
         # self.fields['ambito'].queryset = AmbitoRevista.objects.filter(activo=True)
@@ -69,47 +77,51 @@ class RevistaForm(forms.ModelForm):
 
     def clean_nombre(self):
         """
-        Validar el nombre de la revista.
-        Pasos:
-        1. Obtener el valor de nombre
-        2. Validar reglas de negocio (si aplica)
-        3. Retornar el nombre limpio
-        """
-        # 1. Obtener el valor de nombre
-        nombre = self.cleaned_data.get('nombre')
+        Valida el campo `nombre` de la revista.
 
-        # 2. Validar reglas de negocio (si aplica)
+        Garantiza que el nombre esté normalizado y, opcionalmente,
+        evita duplicados.
+
+        Returns:
+            str: Nombre validado de la revista.
+        """
+        nombre = self.cleaned_data.get('nombre')
         # if Revista.objects.filter(nombre__iexact=nombre).exists():
         #     raise forms.ValidationError('Ya existe una revista con ese nombre.')
-
-        # 3. Retornar el nombre limpio
         return nombre
 
     def clean(self):
         """
-        Validar coherencia de ISSN impreso/electrónico.
-        Pasos:
-        1. Llamar a la limpieza base
-        2. Obtener los ISSN ingresados
-        3. Validar que al menos uno esté presente
-        4. Retornar los datos limpios
-        """
-        # 1. Llamar a la limpieza base
-        cleaned_data = super().clean()
+        Valida la coherencia entre los campos ISSN impreso y electrónico.
 
-        # 2. Obtener los ISSN ingresados
+        Exige que al menos uno de los dos ISSN esté presente antes de guardar.
+
+        Returns:
+            dict: Datos limpios y validados.
+
+        Raises:
+            forms.ValidationError: Si ambos campos ISSN están vacíos.
+        """
+        cleaned_data = super().clean()
         issn_impreso = cleaned_data.get('issn_impreso')
         issn_electronico = cleaned_data.get('issn_electronico')
 
-        # 3. Validar que al menos uno esté presente
         if not issn_impreso and not issn_electronico:
             raise forms.ValidationError('Debe ingresar al menos un ISSN (impreso o electrónico).')
-
-        # 4. Retornar los datos limpios
         return cleaned_data
 
 
 class PaisForm(forms.ModelForm):
+    """
+    Formulario para registrar o editar países.
+
+    Permite ingresar el nombre y el código ISO (3 letras),
+    aplicando normalización automática al código.
+
+    Attributes:
+        Meta (type): Define el modelo `Pais`, campos y widgets asociados.
+    """
+
     class Meta:
         model = Pais
         fields = ['nombre', 'codigo_iso']
@@ -128,24 +140,25 @@ class PaisForm(forms.ModelForm):
 
     def clean_codigo_iso(self):
         """
-        Normalizar el código ISO del país.
-        Pasos:
-        1. Obtener el código ingresado
-        2. Limpiar espacios y convertir a mayúsculas
-        3. Retornar el código normalizado
-        """
-        # 1. Obtener el código ingresado
-        codigo = self.cleaned_data.get('codigo_iso')
+        Normaliza el código ISO del país antes de validarlo.
 
-        # 2. Limpiar espacios y convertir a mayúsculas
+        Returns:
+            str: Código ISO en mayúsculas y sin espacios.
+        """
+        codigo = self.cleaned_data.get('codigo_iso')
         if codigo:
             codigo = codigo.strip().upper()
-
-        # 3. Retornar el código normalizado
         return codigo
 
 
 class CategoriaRevistaForm(forms.ModelForm):
+    """
+    Formulario para la creación o edición de categorías de revista.
+
+    Attributes:
+        Meta (type): Define el modelo `CategoriaRevista`, campos y widgets.
+    """
+
     class Meta:
         model = CategoriaRevista
         fields = ['nombre', 'descripcion']
@@ -163,6 +176,13 @@ class CategoriaRevistaForm(forms.ModelForm):
 
 
 class AmbitoRevistaForm(forms.ModelForm):
+    """
+    Formulario para la creación o edición de ámbitos de revista.
+
+    Attributes:
+        Meta (type): Define el modelo `AmbitoRevista`, campos y widgets.
+    """
+
     class Meta:
         model = AmbitoRevista
         fields = ['nombre', 'descripcion']
@@ -180,6 +200,16 @@ class AmbitoRevistaForm(forms.ModelForm):
 
 
 class EditorialForm(forms.ModelForm):
+    """
+    Formulario para registrar o editar editoriales de revistas.
+
+    Permite capturar información básica de la editorial,
+    como nombre, país y dirección.
+
+    Attributes:
+        Meta (type): Define el modelo `Editorial`, campos y widgets.
+    """
+
     class Meta:
         model = Editorial
         fields = ['nombre', 'pais', 'direccion']

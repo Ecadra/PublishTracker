@@ -154,3 +154,14 @@ body {
 .bg-alert{
     background-color: #ffc107;
 }
+.action-buttons .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Estilo para el botón de navegación activo */
+.action-buttons .btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
