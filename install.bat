@@ -40,6 +40,10 @@ pip install -r requirements.txt
 REM 5. Ejecutar migraciones para crear las tablas de la base de datos
 ECHO Paso 5: Aplicando migraciones de la base de datos...
 python manage.py makemigrations
+python manage.py makemigrations authors
+python manage.py makemigrations core
+python manage.py makemigrations journals 
+python manage.py makemigrations publications
 python manage.py migrate
 
 REM 6. Cargar los datos iniciales (fixtures) con rutas relativas

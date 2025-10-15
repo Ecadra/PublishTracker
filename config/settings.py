@@ -34,7 +34,6 @@ ALLOWED_HOSTS = []
 CURRENT_VERSION = "v1.0.0" 
 # Repositorio de GitHub para verificar actualizaciones. Formato: 'owner/repo'
 GITHUB_REPO = "Ecadra/PublishTracker"
-
 # Application definition
 DJANGO_APPS = [
     'django.contrib.admin',
