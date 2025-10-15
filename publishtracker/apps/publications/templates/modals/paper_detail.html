@@ -1,0 +1,131 @@
+<div class="container-fluid">
+    <!-- Título y Metadatos Principales -->
+    <div class="pb-3 mb-4 border-bottom">
+        <h3 class="fw-bold">{{ paper.titulo }}</h3>
+        <p class="text-muted mb-1">
+            <span class="me-3"><i class="fas fa-calendar-alt me-2"></i>Publicado en {{ paper.anio_publicacion }}</span>
+            <span class="badge bg-primary">{{ paper.estatus_publicacion.estatus }}</span>
+        </p>
+    </div>
+
+    <div class="row">
+        <!-- Columna Izquierda: Detalles Bibliográficos y Resumen -->
+        <div class="col-lg-8">
+            <!-- Información de la Revista -->
+            <div class="card mb-4">
+                <div class="card-header fw-bold"><i class="fas fa-book-open me-2"></i>Información de Publicación</div>
+                <div class="card-body">
+                    <p><strong>Revista:</strong> {{ paper.edicion.revista.nombre }}</p>
+                    <p><strong>Edición:</strong> Vol. {{ paper.edicion.volumen }}, No. {{ paper.edicion.numero }} ({{ paper.edicion.anio }})</p>
+                    <p><strong>Páginas:</strong> {{ paper.rango_paginas }}</p>
+                    <p><strong>DOI:</strong> 
+                        {% if paper.doi %}
+                            <a href="{{ paper.doi_url }}" target="_blank">{{ paper.doi }} <i class="fas fa-external-link-alt"></i></a>
+                        {% else %}
+                            No disponible
+                        {% endif %}
+                    </p>
+                    <p><strong>URL de Cita:</strong> 
+                        {% if paper.url_cita %}
+                            <a href="{{ paper.url_cita }}" target="_blank">Visitar enlace <i class="fas fa-external-link-alt"></i></a>
+                        {% else %}
+                            No disponible
+                        {% endif %}
+                    </p>
+                    <p><strong>Total de Citas:</strong> <span class="badge bg-secondary">{{ paper.total_citas }}</span></p>
+                </div>
+            </div>
+
+            <!-- Resumen y Descripción -->
+            <div class="card mb-4">
+                <div class="card-header fw-bold"><i class="fas fa-file-alt me-2"></i>Resumen y Propósito</div>
+                <div class="card-body">
+                    <h6>Abstract</h6>
+                    <p class="text-muted" style="white-space: pre-wrap;">{{ paper.abstract|default:"No disponible" }}</p>
+                    <hr>
+                    <h6>Objetivo</h6>
+                    <p style="white-space: pre-wrap;">{{ paper.objetivo|default:"No disponible" }}</p>
+                    <h6>Propósito</h6>
+                    <p style="white-space: pre-wrap;">{{ paper.proposito|default:"No disponible" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Autores, Palabras Clave y Archivos -->
+        <div class="col-lg-4">
+            <!-- Autores -->
+            <div class="card mb-4">
+                <div class="card-header fw-bold"><i class="fas fa-users me-2"></i>Autores</div>
+                <ul class="list-group list-group-flush">
+                    {% for autor_relacion in paper.autores_ordenados %}
+                    <li class="list-group-item">
+                        <strong>{{ autor_relacion.autor.nombre }}</strong><br>
+                        <small class="text-muted">{{ autor_relacion.rol_autor.rol.nombre_rol }}</small>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No hay autores asignados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Palabras Clave -->
+            <div class="card mb-4">
+                <div class="card-header fw-bold"><i class="fas fa-tags me-2"></i>Palabras Clave</div>
+                <div class="card-body">
+                    {% for item in paper.paperpalabraclave_set.all %}
+                        <span class="badge bg-info me-1 mb-1">{{ item.palabra_clave.nombre }}</span>
+                    {% empty %}
+                        <p class="text-muted">No hay palabras clave.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Archivos del Paper -->
+            <div class="card mb-4">
+                <div class="card-header fw-bold"><i class="fas fa-file-pdf me-2"></i>Archivos del Paper</div>
+                <ul class="list-group list-group-flush">
+                    {% for archivo in paper.archivos.all %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-file-alt me-2 text-danger"></i>{{ archivo.tipo_archivo.tipo }}</span>
+                        <div class="btn-group">
+                            <a href="{{ archivo.archivo.url }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Ver"><i class="fas fa-eye"></i></a>
+                            <a href="{{ archivo.archivo.url }}" class="btn btn-sm btn-outline-success" download title="Descargar"><i class="fas fa-download"></i></a>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No hay archivos específicos del paper.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Archivos de la Edición de la Revista -->
+            <div class="card mb-4">
+                <div class="card-header fw-bold"><i class="fas fa-book me-2"></i>Archivos de la Revista (Edición)</div>
+                <ul class="list-group list-group-flush">
+                    {% for archivo in archivos_edicion %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-file-archive me-2 text-secondary"></i>{{ archivo.tipo_archivo.tipo }}</span>
+                        <div class="btn-group">
+                            <a href="{{ archivo.archivo.url }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="Ver"><i class="fas fa-eye"></i></a>
+                            <a href="{{ archivo.archivo.url }}" class="btn btn-sm btn-outline-success" download title="Descargar"><i class="fas fa-download"></i></a>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No hay archivos de la edición de la revista.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+             <!-- Apoyo SECITI -->
+             {% if paper.recibio_apoyo_seciti %}
+             <div class="card mb-4">
+                <div class="card-header fw-bold text-white bg-success"><i class="fas fa-check-circle me-2"></i>Apoyo SECITI</div>
+                <div class="card-body">
+                    <p><strong>Programa:</strong> {{ paper.programa.nombre|default:"No especificado" }}</p>
+                    <p><strong>Eje:</strong> {{ paper.eje_secithi.nombre|default:"No especificado" }}</p>
+                </div>
+            </div>
+             {% endif %}
+        </div>
+    </div>
+</div>

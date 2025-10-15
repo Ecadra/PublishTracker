@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/palabras-clave/create/', views.create_keywords,name="create keywords"),
     path('publications/create/', views.create_paper,name = 'create_paper'),
     path('modal/new-paper/', views.get_new_paper_modal_content, name='modal_new_paper_content'),
+    path('publications/paper/<int:paper_id>/detail/', views.paper_detail_view, name='paper_detail'),
 ]

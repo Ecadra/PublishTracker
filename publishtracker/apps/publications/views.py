@@ -3,7 +3,7 @@ import json
 import requests
 from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.db import transaction
 from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
@@ -362,3 +362,58 @@ def get_new_paper_modal_content(request):
     }
 
     return render(request, 'modals/paper_accordion.html', context)
+def paper_detail_view(request, paper_id):
+    """
+    Muestra los detalles completos de un paper en un modal.
+    """
+    print(f"DEBUG: Buscando paper con ID: {paper_id}")
+    paper = get_object_or_404(
+        Paper.objects.select_related(
+            'edicion__revista',
+            'estatus_publicacion',
+            'programa',
+            'eje_secithi'
+        ).prefetch_related(
+            Prefetch(
+                'paperautor_set',
+                queryset=PaperAutor.objects.select_related('autor', 'rol_autor__rol').order_by('orden_autor'),
+                to_attr='autores_ordenados'
+            ),
+            'paperpalabraclave_set__palabra_clave',
+            'archivos__tipo_archivo'
+        ),
+        id=paper_id
+    )
+    print(f"DEBUG: Paper encontrado: '{paper.titulo}'")
+
+    # Obtener los archivos de la edición de la revista que fueron clonados
+    archivos_edicion_clonados = []
+    clone_dir_relative = os.path.join(str(paper.edicion.anio), str(paper.edicion.revista.id), str(paper.id), 'archivos_revista')
+    clone_dir_full = os.path.join(settings.MEDIA_ROOT, clone_dir_relative)
+    print(f"DEBUG: Buscando archivos de revista clonados en: {clone_dir_full}")
+
+    if os.path.isdir(clone_dir_full):
+        # Mapear los tipos de archivo originales para obtener sus nombres
+        archivos_revista_originales = ArchivoRevista.objects.filter(edicion=paper.edicion).select_related('tipo_archivo')
+        tipos_por_nombre_archivo = {os.path.basename(ar.archivo.name): ar.tipo_archivo for ar in archivos_revista_originales}
+        print(f"DEBUG: Mapeo de archivos originales: {tipos_por_nombre_archivo}")
+
+        for filename in os.listdir(clone_dir_full):
+            tipo_archivo_obj = tipos_por_nombre_archivo.get(filename)
+            if tipo_archivo_obj:
+                archivos_edicion_clonados.append({
+                    'tipo_archivo': tipo_archivo_obj,
+                    'archivo': {
+                        'url': os.path.join(settings.MEDIA_URL, clone_dir_relative, filename)
+                    }
+                })
+        print(f"DEBUG: Archivos de edición clonados encontrados: {len(archivos_edicion_clonados)}")
+    else:
+        print("DEBUG: El directorio de archivos clonados no existe.")
+
+
+    context = {
+        'paper': paper,
+        'archivos_edicion': archivos_edicion_clonados,
+    }
+    return render(request, 'modals/paper_detail.html', context)

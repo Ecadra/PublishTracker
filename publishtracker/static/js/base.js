@@ -315,7 +315,7 @@ const ModalManager = {
     const elements = {
       title: document.getElementById('modalTitle'),
       body: document.getElementById('modalBody'),
-      footer: document.getElementById('footer')
+      footer: document.getElementById('modalFooter')
     };
 
     // 2. Ejecutar animación de salida
@@ -388,11 +388,17 @@ const ModalManager = {
       bodyDiv.classList.add('animate__animated', 'animate__fadeIn');
       elements.body.appendChild(bodyDiv);
     }
-
+    
     // 3. Renderizar/ocultar footer
-    if (elements.footer) {
-      elements.footer.innerHTML = current.footer || '';
-      elements.footer.style.display = current.footer ? 'block' : 'none';
+    // Busca si el nuevo contenido tiene un div con la clase .modal-footer
+    const newFooter = elements.body.querySelector('.modal-footer');
+    if (newFooter) {
+        elements.footer.innerHTML = newFooter.innerHTML;
+        elements.footer.style.display = 'block';
+        newFooter.remove(); // Eliminar el footer del body para no duplicarlo
+    } else {
+        elements.footer.innerHTML = '';
+        elements.footer.style.display = 'none';
     }
   },
 
@@ -1418,7 +1424,7 @@ const EntityManager = {
 // =============================================================================
 
 /**
- * Guardar revista desde modal.
+ * Guarda una nueva revista desde el modal.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta journals/create
  * 2. Manejar feedback por dentro de EntityManager
@@ -1428,7 +1434,7 @@ async function guardarRevista() {
 }
 
 /**
- * Guardar país desde modal.
+ * Guarda un nuevo país desde el modal.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta create-country
  * 2. Manejar feedback por dentro de EntityManager
@@ -1438,7 +1444,7 @@ async function guardarPais() {
 }
 
 /**
- * Guardar categoría desde modal.
+ * Guarda una nueva categoría desde el modal.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta create-category
  * 2. Manejar feedback por dentro de EntityManager
@@ -1448,7 +1454,7 @@ async function guardarCategoria() {
 }
 
 /**
- * Guardar ámbito desde modal.
+ * Guarda un nuevo ámbito desde el modal.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta create-scope
  * 2. Manejar feedback por dentro de EntityManager
@@ -1458,7 +1464,7 @@ async function guardarAmbito() {
 }
 
 /**
- * Guardar editorial desde modal.
+ * Guarda una nueva editorial desde el modal.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta create-publisher
  * 2. Manejar feedback por dentro de EntityManager
@@ -1468,7 +1474,7 @@ async function guardarEditorial() {
 }
 
 /**
- * Guardar programa SECITI.
+ * Guarda un nuevo programa SECITI.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta create-program
  * 2. Manejar feedback por dentro de EntityManager
@@ -1478,7 +1484,7 @@ async function guardarPrograma() {
 }
 
 /**
- * Guardar eje SECITHI.
+ * Guarda un nuevo eje SECITHI.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta create-axis
  * 2. Manejar feedback por dentro de EntityManager
@@ -1488,7 +1494,7 @@ async function guardarEje() {
 }
 
 /**
- * Guardar autor desde modal.
+ * Guarda un nuevo autor desde el modal.
  * Pasos:
  * 1. Delegar a EntityManager.save con ruta authors/create
  * 2. Manejar feedback por dentro de EntityManager
@@ -1498,7 +1504,7 @@ async function guardarAutorDesdeModal() {
 }
 
 /**
- * Guardar paper completo.
+ * Guarda un nuevo paper completo.
  * Pasos:
  * 1. Delegar a PaperManager.save
  * 2. Manejar feedback dentro de PaperManager
@@ -1512,7 +1518,7 @@ async function guardarPaper() {
 // =============================================================================
 
 /**
- * Cargar contenido dinámico en modal.
+ * Carga contenido dinámico en modal.
  * Pasos:
  * 1. Delegar a ModalManager.loadContent
  * 2. Propagar parámetros recibidos
@@ -1522,7 +1528,7 @@ function cargarContenidoModal(url, title, size, footer, saveState) {
 }
 
 /**
- * Volver a la vista anterior del modal.
+ * Vuelve a la vista anterior del modal.
  * Pasos:
  * 1. Delegar a ModalManager.pop
  * 2. Respetar historial de la pila
@@ -1532,7 +1538,7 @@ function regresarAVistaAnterior() {
 }
 
 /**
- * Cargar roles de autores.
+ * Carga roles de autores.
  * Pasos:
  * 1. Delegar a AuthorManager.loadRoles
  * 2. Retornar promesa para chaining
@@ -1542,7 +1548,7 @@ function cargarRoles() {
 }
 
 /**
- * Buscar autores en tabla local.
+ * Busca autores en tabla local.
  * Pasos:
  * 1. Delegar a AuthorManager.searchLocal
  * 2. Mostrar toasts según resultados
@@ -1552,7 +1558,7 @@ function buscarAutorLocal() {
 }
 
 /**
- * Agregar autor seleccionado.
+ * Agrega un autor seleccionado.
  * Pasos:
  * 1. Delegar a AuthorManager.add
  * 2. Actualizar UI y campo hidden
@@ -1562,7 +1568,7 @@ function agregarAutorSeleccionadoLocal(authorId, name, orcid) {
 }
 
 /**
- * Eliminar autor seleccionado.
+ * Elimina un autor seleccionado.
  * Pasos:
  * 1. Delegar a AuthorManager.remove
  * 2. Reordenar y refrescar UI
@@ -1572,7 +1578,7 @@ function eliminarAutorSeleccionadoLocal(authorId) {
 }
 
 /**
- * Actualizar rol de autor.
+ * Actualiza el rol de un autor.
  * Pasos:
  * 1. Delegar a AuthorManager.updateRole
  * 2. Sincronizar campo hidden
@@ -1582,7 +1588,7 @@ function actualizarRolAutor(authorId, roleId) {
 }
 
 /**
- * Actualizar orden de autor.
+ * Actualiza el orden de un autor.
  * Pasos:
  * 1. Delegar a AuthorManager.updateOrder
  * 2. Refrescar tabla y hidden
@@ -1592,7 +1598,7 @@ function actualizarOrdenAutor(authorId, newOrder) {
 }
 
 /**
- * Inicializar sistema de palabras clave.
+ * Inicializa el sistema de palabras clave.
  * Pasos:
  * 1. Delegar a KeywordManager.load
  * 2. Renderizar catálogo si aplica
@@ -1602,7 +1608,7 @@ function inicializarPalabrasClave() {
 }
 
 /**
- * Seleccionar palabra clave existente.
+ * Selecciona una palabra clave existente.
  * Pasos:
  * 1. Delegar a KeywordManager.select
  * 2. Refrescar UI
@@ -1612,7 +1618,7 @@ function seleccionarPalabraClave(keyword) {
 }
 
 /**
- * Agregar nueva palabra clave.
+ * Agrega una nueva palabra clave.
  * Pasos:
  * 1. Delegar a KeywordManager.addNew
  * 2. Validar, insertar y refrescar
@@ -1622,7 +1628,7 @@ function agregarNuevaPalabraClave() {
 }
 
 /**
- * Eliminar palabra clave seleccionada.
+ * Elimina una palabra clave seleccionada.
  * Pasos:
  * 1. Delegar a KeywordManager.remove
  * 2. Refrescar UI y hidden
@@ -1632,7 +1638,7 @@ function eliminarPalabraClaveSeleccionada(index) {
 }
 
 /**
- * Mostrar toast de utilidad.
+ * Muestra un toast de utilidad.
  * Pasos:
  * 1. Delegar a Utils.showToast
  * 2. Pasar parámetros directos
@@ -1646,7 +1652,7 @@ function mostrarAlertaPersonalizada(message, type, duration) {
 // =============================================================================
 
 /**
- * Inicializar listeners del formulario del paper.
+ * Inicializa los listeners del formulario del paper.
  * Pasos:
  * 1. Inicializar palabras clave y roles
  * 2. Adjuntar listeners de verificación de edición
@@ -1680,7 +1686,7 @@ function initializePaperFormListeners() {
 }
 
 /**
- * Abrir modal de registro de paper.
+ * Abre el modal de registro de paper.
  * Pasos:
  * 1. Cargar contenido del modal con callback de init
  * 2. Manejar errores con toast
@@ -1926,22 +1932,25 @@ function actualizarSelectEje(newAxis) {
   SelectUpdater.updateAxis(newAxis);
 }
 
-// =============================================================================
-// FUNCIONALIDADES PENDIENTES
-// =============================================================================
 
 /**
- * Visualizar detalles de un paper (pendiente).
- * Pasos:
- * 1. Mostrar toast de funcionalidad no implementada
- * 2. Mantener compatibilidad con UI
+ * Visualiza los detalles de un paper en un modal dinámico.
+ * @param {number} paperId - ID del paper a visualizar.
  */
-function viewPaper() {
-  Utils.showToast('Funcionalidad no implementada.', 'warning');
+function viewPaper(paperId) {
+    if (!paperId) {
+        Utils.showToast('ID de paper no válido.', 'danger');
+        return;
+    }
+    const url = `/publications/paper/${paperId}/detail/`;
+    ModalManager.loadContent(url, 'Detalles del Paper', 'xl');
 }
+// =============================================================================
+//  TODO: FUNCIONALIDADES PENDIENTES
+// =============================================================================
 
 /**
- * Editar un paper existente (pendiente).
+ * Edita un paper existente (pendiente).
  * Pasos:
  * 1. Mostrar toast de funcionalidad no implementada
  * 2. Mantener compatibilidad con UI
@@ -1951,7 +1960,7 @@ function editPaper() {
 }
 
 /**
- * Generar reporte de publicaciones (pendiente).
+ * Genera reporte de publicaciones (pendiente).
  * Pasos:
  * 1. Mostrar toast de funcionalidad no implementada
  * 2. Mantener compatibilidad con UI
@@ -2129,7 +2138,7 @@ const EditionManager = {
     // 1. Preparar banner según exista o no la edición
     const container = document.getElementById('edicionArchivosContainer');
     let html = '';
-    const tiposRequeridos = ['Portada', 'Hoja Legal', 'Índice de Paper'];
+    const tiposRequeridos = ['Portada', 'Hoja Legal', 'Indice de Paper'];
 
     if (data.edicion_existe) {
       html += `<h6><i class="fas fa-check-circle text-success"></i> Edición Encontrada</h6>`;
