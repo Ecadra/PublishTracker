@@ -1959,6 +1959,62 @@ function editPaper() {
 function generateReport() {
   Utils.showToast('Funcionalidad no implementada.', 'warning');
 }
+// =============================================================================
+// MÓDULO DE GESTIÓN DE ACTUALIZACIONES
+// =============================================================================
+
+/**
+ * Gestiona el proceso de actualización de la aplicación.
+ * @namespace UpdateManager
+ */
+const UpdateManager = {
+  /**
+   * Inicia el proceso de actualización.
+   * Pasos:
+   * 1. Notificar inicio de actualización
+   * 2. Abrir changelog en nueva pestaña
+   * 3. Enviar solicitud POST al backend
+   * 4. Parsear respuesta JSON
+   * 5. Notificar éxito si la actualización fue aplicada
+   * 6. Notificar error si el backend responde con fallo
+   * 7. Notificar error de red en caso de excepción
+   * @param {string} changelogUrl - La URL de la página de lanzamientos de GitHub.
+   */
+  async applyUpdate(changelogUrl) {
+    // 1. Notificar inicio de actualización
+    Utils.showToast('Iniciando actualización... No cierres la aplicación.', 'info', 8000);
+
+    // 2. Abrir changelog en nueva pestaña
+    window.open(changelogUrl, '_blank');
+
+    try {
+      // 3. Enviar solicitud POST al backend
+      const response = await fetch('/core/apply-update/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': Utils.getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      // 4. Parsear respuesta JSON
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // 5. Notificar éxito
+        Utils.showToast(`✅ ${data.message}`, 'success', 15000);
+      } else {
+        // 6. Notificar error del backend
+        Utils.showToast(`❌ Error: ${data.message}`, 'danger', 15000);
+        console.error('Detalles del error desde el servidor:', data.output || data.message);
+      }
+    } catch (error) {
+      // 7. Notificar error de red
+      console.error('Error de red al intentar actualizar:', error);
+      Utils.showToast('❌ Error de conexión al intentar actualizar. Revisa la consola del servidor.', 'danger', 10000);
+    }
+  }
+};
 
 // =============================================================================
 // INICIALIZACIÓN
