@@ -145,60 +145,73 @@ def guardar_eje(request):
 @require_http_methods(["POST"])
 def apply_update(request):
     """
-    Ejecuta actualización con 'git pull' y responde el resultado.
-    Pasos:
-    1. Validar que el proyecto sea un repositorio Git
-    2. Ejecutar 'git pull' en la raíz del proyecto
-    3. Retornar respuesta exitosa con la salida
-    4. Manejar errores de ejecución de git
-    5. Manejar ausencia del binario git
-    6. Manejar errores inesperados
+    Actualiza la aplicación forzando la sincronización con la rama 'main' del repositorio remoto.
+    Este método es más robusto y funciona incluso desde un estado 'detached HEAD'.
     """
     try:
-        # 1. Validar repositorio Git
         project_root = settings.BASE_DIR.parent
         git_dir = os.path.join(project_root, '.git')
 
         if not os.path.isdir(git_dir):
             return JsonResponse({
                 'success': False,
-                'message': 'Error: El directorio .git no se encontró. Asegúrate de que el proyecto es un repositorio de Git.'
+                'message': 'Error: El directorio .git no se encontró. La actualización automática no está disponible.'
             }, status=400)
 
-        # 2. Ejecutar 'git pull'
-        result = subprocess.run(
-            ['git', 'pull'],
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=project_root
+        # 1. Traer todos los cambios del repositorio remoto sin aplicarlos
+        print("Ejecutando 'git fetch --all'...")
+        subprocess.run(
+            ['git', 'fetch', '--all'],
+            capture_output=True, text=True, check=True, cwd=project_root
         )
 
-        # 3. Retornar éxito
+        # 2. Asegurarse de estar en la rama principal (main o master)
+        print("Cambiando a la rama 'main'...")
+        subprocess.run(['git', 'checkout', 'main'], capture_output=True, text=True, cwd=project_root)
+
+        # 3. Forzar la actualización al estado del repositorio remoto (origin/main)
+        print("Forzando la actualización con 'git reset --hard origin/main'...")
+        reset_result = subprocess.run(
+            ['git', 'reset', '--hard', 'origin/main'],
+            capture_output=True, text=True, check=True, cwd=project_root
+        )
+        
+        output = reset_result.stdout
+
         return JsonResponse({
             'success': True,
-            'message': '¡Actualización completada! Por favor, reinicia la aplicación para ver los cambios.',
-            'output': result.stdout
+            'message': '¡Actualización completada con éxito! Por favor, reinicia la aplicación.',
+            'output': output
         })
 
     except subprocess.CalledProcessError as e:
-        # 4. Manejar errores de git
+        # Este error es común si la rama principal no es 'main', sino 'master'
+        if "pathspec 'main' did not match any file(s) known to git" in e.stderr:
+             try:
+                print("Rama 'main' no encontrada, intentando con 'master'...")
+                subprocess.run(['git', 'checkout', 'master'], check=True, capture_output=True, text=True, cwd=project_root)
+                reset_result = subprocess.run(['git', 'reset', '--hard', 'origin/master'], check=True, capture_output=True, text=True, cwd=project_root)
+                return JsonResponse({
+                    'success': True,
+                    'message': '¡Actualización completada con éxito! Por favor, reinicia la aplicación.',
+                    'output': reset_result.stdout
+                })
+             except subprocess.CalledProcessError as master_e:
+                return JsonResponse({'success': False, 'message': f"Error al intentar con 'master': {master_e.stderr}", 'output': master_e.stderr}, status=500)
+
+        error_message = f"Error al ejecutar un comando de Git: {e.stderr}"
         return JsonResponse({
             'success': False,
-            'message': 'Error al ejecutar git pull. Revisa si hay conflictos sin resolver.',
+            'message': error_message,
             'output': e.stderr
         }, status=500)
-
     except FileNotFoundError:
-        # 5. Manejar ausencia de git
         return JsonResponse({
             'success': False,
-            'message': 'El comando "git" no se encontró. Asegúrate de que Git esté instalado y en el PATH del sistema.'
+            'message': 'El comando "git" no se encontró. Asegúrate de que Git esté instalado y en el PATH.'
         }, status=500)
-
     except Exception as e:
-        # 6. Manejar error inesperado
         return JsonResponse({
             'success': False,
-            'message': f'Ocurrió un error inesperado: {str(e)}'
+            'message': f'Ocurrió un error inesperado durante la actualización: {str(e)}'
         }, status=500)
