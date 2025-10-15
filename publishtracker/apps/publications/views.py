@@ -1,7 +1,9 @@
 # paper_list_view/views.py
 import os
 import json
+import requests
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.db import transaction
@@ -213,6 +215,7 @@ def paper_list_view(request):
     """
     Listar papers con filtros y paginación.
     Pasos:
+    0. Buscar actualizaciones de releases con la API de github
     1. Construir query base optimizada (select_related/prefetch)
     2. Leer filtros de búsqueda, estatus y año
     3. Convertir filtros a tipos adecuados
@@ -222,6 +225,23 @@ def paper_list_view(request):
     7. Preparar listas de filtros y datos extra
     8. Renderizar template con el contexto
     """
+    #0. Buscar actualizaciones
+    update_info = None
+    try:
+        api_url = f"https://api.github.com/repos/{settings.GITHUB_REPO}/releases/latest"
+        response = requests.get(api_url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            latest_version = data.get('tag_name')
+            if latest_version and latest_version != settings.CURRENT_VERSION:
+                update_info = {
+                    'version': latest_version,
+                    'url': data.get('html_url')
+                }
+    except requests.RequestException:
+        # Si hay un error de red (sin conexión, etc.), simplemente no se muestra la notificación.
+        print("Advertencia: No se pudo conectar a la API de GitHub para verificar actualizaciones.")
+    
     # 1. Construir query base optimizada (select_related/prefetch)
     papers_query = Paper.objects.select_related(
         'edicion__revista',

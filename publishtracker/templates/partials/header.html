@@ -1,4 +1,3 @@
-<!-- templates/partials/header.html -->
 <header class="header-section">
     <div class="container-fluid">
         <div class="row align-items-center">
@@ -27,3 +26,16 @@
         </div>
     </div>
 </header>
+
+<!-- Contenedor para la Alerta de Actualización -->
+<div class="container-fluid mt-2">
+    {% if update_info %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>¡Nueva versión disponible!</strong> 
+        Se ha detectado la versión <strong>{{ update_info.version }}</strong>.
+        <a href="{{ update_info.url }}" target="_blank" class="alert-link">Ver detalles y descargar</a>.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+</div>
