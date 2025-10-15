@@ -1300,7 +1300,11 @@ const EntityManager = {
 
                 console.debug("EntityManager._reloadParentForm: Estado (modificado) restaurado en la nueva vista:", ModalManager.stack[ModalManager.stack.length - 1]);
                 // Actualizar el DOM del modal con el estado restaurado (y el nuevo ID seleccionado)
-                ModalManager._renderCurrentView();
+                ModalManager._renderCurrentView().then(() => {
+                if (typeof initializePaperFormListeners === 'function') {
+                    initializePaperFormListeners();
+                }
+            });
             }
         }, 100); // Pequeño delay para asegurar carga
     }
@@ -1519,6 +1523,7 @@ function eliminarPalabraClaveSeleccionada(index) {
 function mostrarAlertaPersonalizada(message, type, duration) {
   Utils.showToast(message, type, duration);
 }
+
 
 // =============================================================================
 // MODAL DE NUEVO PAPER
@@ -1873,36 +1878,51 @@ const EditionManager = {
       html += `<p class="small text-muted mb-2">Por favor, adjunta los documentos requeridos.</p>`;
     }
 
-    tiposRequeridos.forEach(tipo => {
-      const archivo = data.archivos[tipo]; // Objeto {nombre, url} o undefined
-      const inputName = `archivo_edicion_${tipo.toLowerCase().replace(/\s+/g, '_')}`;
+  tiposRequeridos.forEach(tipo => {
+    const archivo = data.archivos[tipo];
+    const inputName = `archivo_edicion_${tipo.toLowerCase().replace(/\s+/g, '_')}`;
 
-      if (archivo) {
-        // Si el archivo existe, mostramos la información y el botón de reemplazar
-        html += `
-          <div class="mb-2">
-            <label class="form-label small">${tipo}:</label>
-            <div id="info_${inputName}" class="alert alert-light p-2 small border d-flex justify-content-between align-items-center">
-              <span><i class="fas fa-file-archive text-success me-2"></i><strong>${archivo.nombre}</strong></span>
-              <span>
-                <a href="${archivo.url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Ver archivo">Ver</a>
-                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-1" title="Reemplazar" onclick="EditionManager.toggleReplaceUI('${inputName}', true)">Reemplazar</button>
-              </span>
-            </div>
-            <div id="upload_${inputName}" style="display: none;">
-              <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
-              <button type="button" class="btn btn-sm btn-link text-muted py-0" onclick="EditionManager.toggleReplaceUI('${inputName}', false)">Cancelar</button>
-            </div>
-          </div>`;
-      } else {
-        // Si el archivo no existe, mostramos el input para subirlo
-        html += `
-          <div class="mb-2">
-            <label for="${inputName}" class="form-label small">${tipo}: <span class="text-danger">*</span></label>
+    if (archivo) {
+      // Archivo existe: mostrar info y opción de reemplazar
+      html += `
+        <div class="mb-3">
+          <label class="form-label small fw-bold">${tipo}:</label>
+          <div id="info_${inputName}" class="alert alert-success p-2 small d-flex justify-content-between align-items-center">
+            <span>
+              <i class="fas fa-check-circle me-2"></i>
+              <strong>${archivo.nombre}</strong>
+              <span class="badge bg-success ms-2">Ya cargado</span>
+            </span>
+            <span>
+              <a href="${archivo.url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" title="Ver archivo">
+                <i class="fas fa-eye"></i> Ver
+              </a>
+              <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" title="Reemplazar" 
+                      onclick="EditionManager.toggleReplaceUI('${inputName}', true)">
+                <i class="fas fa-sync-alt"></i> Reemplazar
+              </button>
+            </span>
+          </div>
+          <div id="upload_${inputName}" style="display: none;">
             <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}">
-          </div>`;
-      }
-    });
+            <button type="button" class="btn btn-sm btn-link text-muted py-0 px-0 mt-1" 
+                    onclick="EditionManager.toggleReplaceUI('${inputName}', false)">
+              <i class="fas fa-times"></i> Cancelar reemplazo
+            </button>
+          </div>
+        </div>`;
+    } else {
+      // Archivo NO existe: mostrar input obligatorio
+      html += `
+        <div class="mb-3">
+          <label for="${inputName}" class="form-label small fw-bold">
+            ${tipo}: <span class="text-danger">* Requerido</span>
+          </label>
+          <input class="form-control form-control-sm" type="file" id="${inputName}" name="${inputName}" required>
+          <small class="text-muted">Este documento es necesario para crear la edición.</small>
+        </div>`;
+    }
+  });
 
     container.innerHTML = html;
   },
