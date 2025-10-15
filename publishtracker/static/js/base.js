@@ -1971,54 +1971,48 @@ const UpdateManager = {
   /**
    * Inicia el proceso de actualización.
    * Pasos:
-   * 1. Validar URL del changelog
-   * 2. Notificar inicio al usuario
-   * 3. Abrir changelog en nueva pestaña
-   * 4. Enviar solicitud POST al backend
-   * 5. Procesar respuesta y notificar resultado
-   * 6. Manejar errores de red
-   * @param {string} changelogUrl - URL de la página de lanzamientos de GitHub.
+   * 1. Notificar inicio de actualización
+   * 2. Abrir changelog en nueva pestaña
+   * 3. Enviar solicitud POST al backend
+   * 4. Parsear respuesta JSON
+   * 5. Notificar éxito si la actualización fue aplicada
+   * 6. Notificar error si el backend responde con fallo
+   * 7. Notificar error de red en caso de excepción
+   * @param {string} changelogUrl - La URL de la página de lanzamientos de GitHub.
    */
-  applyUpdate(changelogUrl) {
-    // 1. Validar URL del changelog
-    if (!changelogUrl || typeof changelogUrl !== 'string') {
-      Utils.showToast('URL de changelog inválida.', 'danger', 6000);
-      return;
-    }
+  async applyUpdate(changelogUrl) {
+    // 1. Notificar inicio de actualización
+    Utils.showToast('Iniciando actualización... No cierres la aplicación.', 'info', 8000);
 
-    // 2. Notificar inicio
-    Utils.showToast('Iniciando actualización...', 'info', 5000);
-
-    // 3. Abrir changelog
+    // 2. Abrir changelog en nueva pestaña
     window.open(changelogUrl, '_blank');
 
-    // 4. Enviar POST al backend
-    fetch('/core/apply-update/', {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': Utils.getCookie('csrftoken'),
-        'Content-Type': 'application/json'
-      }
-    })
-      // 5. Procesar respuesta
-      .then(response => response.json().then(data => ({ ok: response.ok, data })))
-      .then(({ ok, data }) => {
-        if (ok && data.success) {
-          Utils.showToast(
-            '✅ ¡Actualización completada! Reinicia la aplicación para ver los cambios.',
-            'success',
-            10000
-          );
-        } else {
-          Utils.showToast(`❌ Error: ${data.message || 'Actualización fallida.'}`, 'danger', 15000);
-          if (data && data.output) console.error('Detalles del error:', data.output);
+    try {
+      // 3. Enviar solicitud POST al backend
+      const response = await fetch('/core/apply-update/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': Utils.getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
         }
-      })
-      // 6. Manejar errores de red
-      .catch(error => {
-        console.error('Error de red al intentar actualizar:', error);
-        Utils.showToast('❌ Error de conexión al intentar actualizar.', 'danger', 10000);
       });
+
+      // 4. Parsear respuesta JSON
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // 5. Notificar éxito
+        Utils.showToast(`✅ ${data.message}`, 'success', 15000);
+      } else {
+        // 6. Notificar error del backend
+        Utils.showToast(`❌ Error: ${data.message}`, 'danger', 15000);
+        console.error('Detalles del error desde el servidor:', data.output || data.message);
+      }
+    } catch (error) {
+      // 7. Notificar error de red
+      console.error('Error de red al intentar actualizar:', error);
+      Utils.showToast('❌ Error de conexión al intentar actualizar. Revisa la consola del servidor.', 'danger', 10000);
+    }
   }
 };
 

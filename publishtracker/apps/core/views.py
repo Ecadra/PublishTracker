@@ -1,5 +1,8 @@
+import os
 from django.shortcuts import render
 from django.http import JsonResponse
+
+from config import settings
 from .forms import ProgramaSecitiForm, EjeSecithiForm
 from .models import ProgramaSeciti, EjeSecithi
 import subprocess
@@ -144,45 +147,57 @@ def apply_update(request):
     """
     Ejecuta actualización con 'git pull' y responde el resultado.
     Pasos:
-    1. Ejecutar 'git pull' y capturar la salida
-    2. Retornar respuesta exitosa con la salida
-    3. Manejar errores de ejecución de git
-    4. Manejar ausencia del binario git
-    5. Manejar errores inesperados
+    1. Validar que el proyecto sea un repositorio Git
+    2. Ejecutar 'git pull' en la raíz del proyecto
+    3. Retornar respuesta exitosa con la salida
+    4. Manejar errores de ejecución de git
+    5. Manejar ausencia del binario git
+    6. Manejar errores inesperados
     """
     try:
-        # 1. Ejecutar 'git pull'
+        # 1. Validar repositorio Git
+        project_root = settings.BASE_DIR.parent
+        git_dir = os.path.join(project_root, '.git')
+
+        if not os.path.isdir(git_dir):
+            return JsonResponse({
+                'success': False,
+                'message': 'Error: El directorio .git no se encontró. Asegúrate de que el proyecto es un repositorio de Git.'
+            }, status=400)
+
+        # 2. Ejecutar 'git pull'
         result = subprocess.run(
             ['git', 'pull'],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
+            cwd=project_root
         )
 
-        # 2. Retornar éxito
+        # 3. Retornar éxito
         return JsonResponse({
             'success': True,
-            'message': 'Actualización completada. Por favor, reinicia la aplicación.',
+            'message': '¡Actualización completada! Por favor, reinicia la aplicación para ver los cambios.',
             'output': result.stdout
         })
 
     except subprocess.CalledProcessError as e:
-        # 3. Manejar errores de git
+        # 4. Manejar errores de git
         return JsonResponse({
             'success': False,
-            'message': 'Error al ejecutar git pull.',
+            'message': 'Error al ejecutar git pull. Revisa si hay conflictos sin resolver.',
             'output': e.stderr
         }, status=500)
 
     except FileNotFoundError:
-        # 4. Manejar ausencia de git
+        # 5. Manejar ausencia de git
         return JsonResponse({
             'success': False,
-            'message': 'El comando "git" no se encontró. Asegúrate de que Git esté instalado y en el PATH.'
+            'message': 'El comando "git" no se encontró. Asegúrate de que Git esté instalado y en el PATH del sistema.'
         }, status=500)
 
     except Exception as e:
-        # 5. Manejar error inesperado
+        # 6. Manejar error inesperado
         return JsonResponse({
             'success': False,
             'message': f'Ocurrió un error inesperado: {str(e)}'
