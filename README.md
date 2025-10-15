@@ -20,20 +20,6 @@ cd PublishTracker
 
 ### 2. Ejecuta el Asistente de Instalación
 
-Elige el script correspondiente a tu sistema operativo. **Esto solo se necesita hacer una vez.**
-
-#### Para Linux o macOS:
-
-```bash
-# Dar permisos de ejecución la primera vez
-chmod +x install.sh
-
-# Ejecutar el asistente
-./install.sh
-```
-
-#### Para Windows:
-
 Simplemente haz doble clic en el archivo `install.bat` o ejecútalo desde la terminal:
 
 ```cmd
@@ -52,25 +38,9 @@ Una vez instalado, puedes iniciar la aplicación en cualquier momento:
 
 Simplemente haz doble clic en el archivo `PublishTracker.bat`. La aplicación se iniciará directamente sin abrir ninguna consola.
 
-### Linux o macOS
-
-Ejecuta el siguiente comando en la terminal desde la carpeta del proyecto:
-
-```bash
-./run.sh
-```
-
 ## Ejecución para Desarrolladores (con Consola)
 
 Si necesitas ver la salida de la consola para depuración:
-
-### Linux o macOS:
-
-```bash
-source .venv/bin/activate && python run_webview.py
-```
-
-### Windows:
 
 ```cmd
 .\.venv\Scripts\activate && python run_webview.py
