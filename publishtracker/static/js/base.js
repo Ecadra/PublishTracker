@@ -2,7 +2,7 @@
  * PublishTracker - Sistema de Gestión de Publicaciones Académicas
  * Versión refactorizada con JSDoc completo y mejores prácticas
  * @author Edwin Campos Dragusin
- * @version 2.0.0
+ * @version 2.0.1
  */
 
 // =============================================================================
@@ -769,7 +769,7 @@ const KeywordManager = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': window.PublishTracker.csrfToken,
+            'X-CSRFToken': Utils.getCookie('csrftoken'),
             'X-Requested-With': 'XMLHttpRequest'
           },
           body: JSON.stringify({ nombre: keyword.nombre.toLowerCase() })
@@ -1068,7 +1068,7 @@ const PaperManager = {
     const response = await fetch('/publications/create/', {
       method: 'POST',
       headers: {
-        'X-CSRFToken': window.PublishTracker.csrfToken,
+        'X-CSRFToken': Utils.getCookie('csrftoken'),
         'X-Requested-With': 'XMLHttpRequest'
       },
       body: formData
@@ -1154,7 +1154,7 @@ const EntityManager = {
       const response = await fetch(createUrl, {
         method: 'POST',
         body: formData,
-        headers: { 'X-CSRFToken': window.PublishTracker.csrfToken }
+        headers: { 'X-CSRFToken': Utils.getCookie('csrftoken') } // <-- MODIFICACIÓN
       });
 
       const data = await response.json();
@@ -1578,6 +1578,7 @@ async function abrirModalNuevoPaper() {
     Utils.showToast('No se pudo abrir el formulario.', 'danger');
   }
 }
+
 // =============================================================================
 // ACTUALIZADORES DE SELECT
 // =============================================================================
@@ -1786,8 +1787,8 @@ function generateReport() {
  */
 document.addEventListener('DOMContentLoaded', () => {
   // Inicializar objeto global PublishTracker
+  // Se elimina la inicialización del csrfToken de aquí para evitar race conditions.
   window.PublishTracker = {
-    csrfToken: Utils.getCookie('csrftoken'),
     baseUrl: window.location.origin,
     modalStack: ModalManager.stack
   };
