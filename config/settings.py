@@ -34,7 +34,8 @@ ALLOWED_HOSTS = []
 CURRENT_VERSION = "v1.0.0" 
 # Repositorio de GitHub para verificar actualizaciones. Formato: 'owner/repo'
 GITHUB_REPO = "Ecadra/PublishTracker"
-
+DB_DIR = DATABASES['default']['NAME'].parent
+os.makedirs(DB_DIR, exist_ok=True)
 # Application definition
 DJANGO_APPS = [
     'django.contrib.admin',
