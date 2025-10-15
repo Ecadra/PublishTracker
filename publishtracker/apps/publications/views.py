@@ -13,7 +13,8 @@ from django.core.files.storage import default_storage
 from django.views.decorators.http import require_http_methods
 
 from publications.models import Paper
-from authors.models import PaperAutor, Rol, Autor, RolAutor
+from authors.models import Rol, Autor, RolAutor
+from publications.models import PaperAutor
 from .models import ArchivoPaper, PalabraClave, PaperPalabraClave, TipoArchivoPaper
 from core.models import EstatusPublicacion, ProgramaSeciti, EjeSecithi
 from journals.models import ArchivoRevista, Revista, EdicionRevista, TipoArchivoRevista

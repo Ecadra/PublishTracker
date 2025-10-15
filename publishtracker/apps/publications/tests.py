@@ -4,9 +4,11 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 import json
 
+from publications.models import PaperAutor
+
 # Importaciones de modelos de todas las apps necesarias
 from .models import Paper, PalabraClave, PaperPalabraClave
-from authors.models import Autor, Rol, RolAutor, PaperAutor
+from authors.models import Autor, Rol, RolAutor
 from journals.models import Revista, Editorial, EdicionRevista, CategoriaRevista, AmbitoRevista
 from core.models import Pais, EstatusPublicacion, ProgramaSeciti, EjeSecithi
 

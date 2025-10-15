@@ -8,6 +8,8 @@ from journals.models import EdicionRevista
 import os
 from django.utils.text import slugify
 
+from authors.models import Autor, RolAutor
+
 
 def paper_file_path(instance, filename):
     """
@@ -113,10 +115,9 @@ class Paper(models.Model):
     fecha_creacion = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de Actualización")
 
-    # Relación many-to-many con autores a través del modelo intermedio
     autores = models.ManyToManyField(
-        'authors.Autor',
-        through='authors.PaperAutor',
+        Autor,
+        through='PaperAutor',
         verbose_name="Autores"
     )
 
@@ -294,3 +295,85 @@ class ArchivoPaper(models.Model):
         # 1. Verificar presencia de punto en el nombre
         # 2. Extraer y normalizar la extensión
         return self.nombre_archivo.split('.')[-1].lower() if '.' in self.nombre_archivo else ''
+
+
+class PaperAutor(models.Model):
+    """
+    Modelo para relación many-to-many entre Paper y Autor, con orden y rol.
+    """
+    paper = models.ForeignKey(
+        Paper,
+        on_delete=models.CASCADE,
+        verbose_name="Paper"
+    )
+    autor = models.ForeignKey(
+        'authors.Autor',
+        on_delete=models.CASCADE,
+        verbose_name="Autor"
+    )
+    orden_autor = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Orden del Autor",
+        help_text="Posición del autor en la lista (1 = primer autor)"
+    )
+    rol_autor = models.ForeignKey(
+        'authors.RolAutor',
+        on_delete=models.CASCADE,
+        verbose_name="Rol del Autor"
+    )
+
+    class Meta:
+        managed = True
+        verbose_name = "Autor del Paper"
+        verbose_name_plural = "Autores del Paper"
+        ordering = ['orden_autor']
+        unique_together = ['paper', 'autor']
+
+    def __str__(self):
+        return f"{self.autor.nombre} - {self.paper.titulo}"
+
+    def set_orden_autor(self, orden):
+        """
+        Setter para orden_autor: debe ser mayor a 0.
+        """
+        if orden > 0:
+            self.orden_autor = orden
+        else:
+            raise ValueError("El orden del autor debe ser mayor a 0")
+
+    def get_orden_autor(self):
+        """
+        Getter para orden_autor.
+        """
+        return self.orden_autor
+
+    @property
+    def es_primer_autor(self):
+        """
+        Indica si es el primer autor.
+        """
+        return self.orden_autor == 1
+
+    @property
+    def es_autor_correspondiente(self):
+        """
+        Indica si es el autor correspondiente (último en la lista).
+        Optimizado para reducir consultas.
+        """
+        if not hasattr(self, "_max_orden"):
+            self._max_orden = (
+                PaperAutor.objects.filter(paper=self.paper)
+                .aggregate(models.Max('orden_autor'))['orden_autor__max']
+            )
+        return self.orden_autor == self._max_orden
+
+    @property
+    def posicion_texto(self):
+        """
+        Devuelve la posición del autor en texto legible.
+        """
+        if self.es_primer_autor:
+            return "Primer autor"
+        elif self.es_autor_correspondiente:
+            return "Autor correspondiente"
+        return f"Autor #{self.orden_autor}"
