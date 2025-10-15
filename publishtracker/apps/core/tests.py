@@ -1,8 +1,12 @@
 # publishtracker/apps/core/tests.py
+import os
+import json
+import subprocess
+from unittest.mock import patch, MagicMock
+
 from django.test import TestCase, Client
 from django.urls import reverse
-import json
-
+from django.conf import settings
 from .models import Pais, EstatusPublicacion, ProgramaSeciti, EjeSecithi
 
 class CoreModelTestCase(TestCase):
@@ -184,3 +188,139 @@ class CoreViewsTestCase(TestCase):
         response_data = json.loads(response.content)
         self.assertFalse(response_data['success'])
         self.assertIn('errors', response_data)
+class UpdateViewsTestCase(TestCase):
+    """
+    Pruebas dedicadas para la funcionalidad de actualización automática vía Git.
+    Estas pruebas utilizan 'mocks' para simular el comportamiento de subprocess.run
+    sin ejecutar realmente comandos de Git, lo que las hace rápidas y seguras.
+    """
+
+    def setUp(self):
+        """
+        Configuración inicial para las pruebas de la vista de actualización.
+        """
+        self.client = Client()
+        self.apply_update_url = reverse('core:apply_update')
+        self.project_root = settings.BASE_DIR.parent
+        self.git_dir = os.path.join(self.project_root, '.git')
+
+    @patch('os.path.isdir')
+    @patch('subprocess.run')
+    def test_apply_update_success(self, mock_subprocess_run, mock_isdir):
+        """
+        CASO DE PRUEBA: Actualización exitosa.
+        Verifica que la vista responde correctamente cuando 'git pull' se ejecuta sin errores.
+        - Mensaje: Se simula que el directorio '.git' existe.
+        - Mensaje: Se simula una ejecución exitosa de 'subprocess.run' con una salida de ejemplo.
+        - Resultado esperado: La respuesta JSON debe indicar éxito y contener el mensaje de 'git pull'.
+        """
+        print("\n--- INICIANDO PRUEBA: test_apply_update_success ---")
+        print("Mensaje: Simulando que el directorio .git existe.")
+        mock_isdir.return_value = True
+
+        # Configurar el mock para simular una salida exitosa de 'git pull'
+        mock_subprocess_run.return_value = MagicMock(
+            stdout="Already up to date.",
+            stderr="",
+            check_returncode=None  # Para que check=True no falle
+        )
+        print("Mensaje: Simulando una ejecución exitosa de 'git pull'.")
+
+        # Realizar la petición POST
+        response = self.client.post(self.apply_update_url)
+        response_data = json.loads(response.content)
+
+        print(f"Mensaje: Respuesta del servidor: {response_data}")
+
+        # Verificaciones
+        self.assertEqual(response.status_code, 200, "El código de estado debe ser 200 (OK).")
+        self.assertTrue(response_data['success'], "La respuesta debe indicar éxito.")
+        self.assertIn('¡Actualización completada!', response_data['message'], "El mensaje debe notificar la finalización.")
+        self.assertEqual(response_data['output'], "Already up to date.", "La salida debe coincidir con la del comando simulado.")
+        print("--- PRUEBA FINALIZADA: test_apply_update_success (Éxito) ---\n")
+
+    @patch('os.path.isdir')
+    def test_apply_update_not_a_git_repo(self, mock_isdir):
+        """
+        CASO DE PRUEBA: El proyecto no es un repositorio de Git.
+        Verifica que la vista devuelve un error si no encuentra el directorio '.git'.
+        - Mensaje: Se simula que el directorio '.git' NO existe.
+        - Resultado esperado: La respuesta JSON debe ser un error 400 (Bad Request).
+        """
+        print("\n--- INICIANDO PRUEBA: test_apply_update_not_a_git_repo ---")
+        print("Mensaje: Simulando que el directorio .git NO existe.")
+        mock_isdir.return_value = False
+
+        response = self.client.post(self.apply_update_url)
+        response_data = json.loads(response.content)
+
+        print(f"Mensaje: Respuesta del servidor: {response_data}")
+
+        self.assertEqual(response.status_code, 400, "El código de estado debe ser 400 (Bad Request).")
+        self.assertFalse(response_data['success'], "La respuesta debe indicar fallo.")
+        self.assertIn('El directorio .git no se encontró', response_data['message'], "El mensaje debe advertir que no se encontró el repo Git.")
+        print("--- PRUEBA FINALIZADA: test_apply_update_not_a_git_repo (Éxito) ---\n")
+
+    @patch('os.path.isdir')
+    @patch('subprocess.run')
+    def test_apply_update_git_command_fails(self, mock_subprocess_run, mock_isdir):
+        """
+        CASO DE PRUEBA: El comando 'git pull' falla.
+        Verifica el manejo de errores cuando 'git pull' produce un error (ej. por conflictos).
+        - Mensaje: Se simula que '.git' existe.
+        - Mensaje: Se simula un error en 'subprocess.run' levantando CalledProcessError.
+        - Resultado esperado: La respuesta JSON debe ser un error 500 y contener el mensaje de error de Git.
+        """
+        print("\n--- INICIANDO PRUEBA: test_apply_update_git_command_fails ---")
+        print("Mensaje: Simulando que el directorio .git existe.")
+        mock_isdir.return_value = True
+
+        # Simular un error de 'git pull'
+        error_output = "error: Your local changes to the following files would be overwritten by merge:\n\tREADME.md"
+        mock_subprocess_run.side_effect = subprocess.CalledProcessError(
+            returncode=1,
+            cmd=['git', 'pull'],
+            stderr=error_output
+        )
+        print("Mensaje: Simulando un fallo en la ejecución de 'git pull' por conflictos locales.")
+
+        response = self.client.post(self.apply_update_url)
+        response_data = json.loads(response.content)
+
+        print(f"Mensaje: Respuesta del servidor: {response_data}")
+
+        self.assertEqual(response.status_code, 500, "El código de estado debe ser 500 (Server Error).")
+        self.assertFalse(response_data['success'], "La respuesta debe indicar fallo.")
+        self.assertIn('Error al ejecutar git pull', response_data['message'], "El mensaje debe indicar un fallo en 'git pull'.")
+        self.assertEqual(response_data['output'], error_output, "La salida debe contener el error de stderr.")
+        print("--- PRUEBA FINALIZADA: test_apply_update_git_command_fails (Éxito) ---\n")
+
+    @patch('os.path.isdir')
+    @patch('subprocess.run')
+    def test_apply_update_git_not_found(self, mock_subprocess_run, mock_isdir):
+        """
+        CASO DE PRUEBA: El comando 'git' no está instalado.
+        Verifica el manejo de errores si el ejecutable de 'git' no se encuentra en el sistema.
+        - Mensaje: Se simula que '.git' existe.
+        - Mensaje: Se simula un FileNotFoundError, que ocurre cuando el comando no existe.
+        - Resultado esperado: La respuesta JSON debe ser un error 500 con un mensaje específico.
+        """
+        print("\n--- INICIANDO PRUEBA: test_apply_update_git_not_found ---")
+        print("Mensaje: Simulando que el directorio .git existe.")
+        mock_isdir.return_value = True
+
+        # Simular que el comando 'git' no se encuentra
+        mock_subprocess_run.side_effect = FileNotFoundError(
+            "No such file or directory: 'git'"
+        )
+        print("Mensaje: Simulando que el comando 'git' no está instalado (FileNotFoundError).")
+
+        response = self.client.post(self.apply_update_url)
+        response_data = json.loads(response.content)
+
+        print(f"Mensaje: Respuesta del servidor: {response_data}")
+
+        self.assertEqual(response.status_code, 500, "El código de estado debe ser 500 (Server Error).")
+        self.assertFalse(response_data['success'], "La respuesta debe indicar fallo.")
+        self.assertIn('El comando "git" no se encontró', response_data['message'], "El mensaje debe advertir que git no está instalado.")
+        print("--- PRUEBA FINALIZADA: test_apply_update_git_not_found (Éxito) ---\n")

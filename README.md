@@ -5,16 +5,16 @@ Asistente de publicaciones con interfaz web integrada y configuración automatiz
 ## Requisitos
 
 - Python 3.6 o superior
-- pip y venv (generalmente incluidos con Python)
+- Git (para poder usar la función de actualización automática)
 
 ## Instalación
 
-### 1. Descarga o Clona el Repositorio
+### 1. Clona el Repositorio (Método Recomendado)
 
-Puedes descargar el .zip desde GitHub y descomprimirlo, o clonar el repositorio con git:
+Para asegurar que puedas recibir actualizaciones automáticas, es **muy importante** que clones el repositorio en lugar de descargarlo como un archivo ZIP.
 
 ```bash
-git clone https://github.com/Ecadra/PublishTracker.git
+git clone [https://github.com/Ecadra/PublishTracker.git](https://github.com/Ecadra/PublishTracker.git)
 cd PublishTracker
 ```
 

@@ -1,10 +1,32 @@
 @echo off
 REM --- Asistente de Instalacion para PublishTracker (Windows) ---
 REM Este script automatiza la configuracion completa del entorno de desarrollo.
-
 ECHO --- Iniciando Instalacion de PublishTracker ---
 
-REM 1. Verificar que Python esta instalado
+REM 1. Verificar que Git esta instalado
+ECHO Paso 1. Verificar que git está instalado
+git --version >nul 2>&1
+IF %ERRORLEVEL% NEQ 0 (
+    ECHO.
+    ECHO [ADVERTENCIA] Git no esta instalado o no esta en el PATH.
+    ECHO La aplicacion funcionara, pero no podras usar la funcion de actualizacion automatica.
+    ECHO Te recomendamos instalar Git para una experiencia completa.
+    ECHO.
+    pause
+) ELSE (
+    REM Verificar si es un repositorio de Git
+    IF NOT EXIST .\.git (
+        ECHO.
+        ECHO [ADVERTENCIA] Has descargado el proyecto como un .zip.
+        ECHO La aplicacion se instalara y funcionara, pero no podras recibir actualizaciones automaticas.
+        ECHO Para habilitar las actualizaciones, por favor, instala usando "git clone".
+        ECHO.
+        pause
+    )
+)
+
+REM 2. Verificar que Python esta instalado
+ECHO Paso 2. Verificar que Python esta instalado
 python --version >nul 2>&1
 IF %ERRORLEVEL% NEQ 0 (
     ECHO Error: Python no esta instalado o no esta en el PATH.
@@ -12,7 +34,7 @@ IF %ERRORLEVEL% NEQ 0 (
     GOTO :EOF
 )
 
-ECHO Paso 1: Creando entorno virtual en la carpeta '.venv'...
+ECHO Creando entorno virtual en la carpeta '.venv'...
 python -m venv .venv
 
 IF NOT EXIST .venv (
@@ -20,16 +42,16 @@ IF NOT EXIST .venv (
     GOTO :EOF
 )
 
-REM 2. Activar el entorno virtual
-ECHO Paso 2: Activando el entorno virtual...
+REM 3. Activar el entorno virtual
+ECHO Paso 3: Activando el entorno virtual...
 CALL .venv\Scripts\activate
 
-REM 3. Actualizar pip
-ECHO Paso 3: Actualizando pip...
+REM 4. Actualizar pip
+ECHO Paso 4: Actualizando pip...
 python -m pip install --upgrade pip
 
-REM 4. Instalar dependencias desde requirements.txt
-ECHO Paso 4: Instalando dependencias del proyecto...
+REM 5. Instalar dependencias desde requirements.txt
+ECHO Paso 5: Instalando dependencias del proyecto...
 IF NOT EXIST requirements.txt (
     ECHO Error: No se encontro el archivo requirements.txt.
     CALL .venv\Scripts\deactivate
@@ -37,8 +59,8 @@ IF NOT EXIST requirements.txt (
 )
 pip install -r requirements.txt
 
-REM 5. Ejecutar migraciones para crear las tablas de la base de datos
-ECHO Paso 5: Aplicando migraciones de la base de datos...
+REM 6. Ejecutar migraciones para crear las tablas de la base de datos
+ECHO Paso 6: Aplicando migraciones de la base de datos...
 python manage.py makemigrations
 python manage.py makemigrations authors
 python manage.py makemigrations core
@@ -46,23 +68,17 @@ python manage.py makemigrations journals
 python manage.py makemigrations publications
 python manage.py migrate
 
-REM 6. Cargar los datos iniciales (fixtures) con rutas relativas
-ECHO Paso 6: Cargando datos iniciales (fixtures)...
+REM 7. Cargar los datos iniciales (fixtures)
+ECHO Paso 7: Cargando datos iniciales (fixtures)...
 python manage.py loaddata publishtracker/apps/authors/fixtures/initial_roles.json
 python manage.py loaddata publishtracker/apps/core/fixtures/initial_estatus.json
 python manage.py loaddata publishtracker/apps/core/fixtures/initial_programas.json
 python manage.py loaddata publishtracker/apps/journals/fixtures/initial_tipo_archivo_revista.json
 python manage.py loaddata publishtracker/apps/publications/fixtures/intial_tipos_archivo_paper.json
 
-REM 7. Crear un superusuario
-ECHO Paso 7: Creando un superusuario para el panel de administracion...
-ECHO Por favor, ingresa los datos para el superusuario de Django:
-python manage.py createsuperuser
-
 ECHO.
 ECHO --- ¡Instalacion completada exitosamente! ---
 ECHO Iniciando la aplicacion en modo de escritorio...
 
-REM 8. Lanzar la aplicacion con el webview
+REM 9. Lanzar la aplicacion con el webview
 python run_webview.py
-
