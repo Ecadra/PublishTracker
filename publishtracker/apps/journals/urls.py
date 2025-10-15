@@ -4,7 +4,6 @@ from . import views
 app_name = 'journals'
 
 urlpatterns = [
-    # ... otras URLs
     path('modal/new-journal/', views.modal_nueva_revista, name='modal_nueva_revista'),
     path('create/', views.guardar_revista, name='guardar_revista'),
     path('modal/new-country/', views.modal_nuevo_pais, name='modal_nuevo_pais'),
