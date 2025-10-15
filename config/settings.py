@@ -31,7 +31,7 @@ ALLOWED_HOSTS = []
 # --- Version Control ---
 # Version actual de la aplicacion local.
 # Se compara con la ultima version en el repositorio de GitHub.
-CURRENT_VERSION = "v1.0.3" 
+CURRENT_VERSION = "v1.0.2" 
 # Repositorio de GitHub para verificar actualizaciones. Formato: 'owner/repo'
 GITHUB_REPO = "Ecadra/PublishTracker"
 # Application definition

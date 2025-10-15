@@ -2,6 +2,9 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from .forms import ProgramaSecitiForm, EjeSecithiForm
 from .models import ProgramaSeciti, EjeSecithi
+import subprocess
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 
 
 def modal_nuevo_programa(request):
@@ -136,3 +139,51 @@ def guardar_eje(request):
         'success': False,
         'message': 'Método no permitido.'
     })
+@require_http_methods(["POST"])
+def apply_update(request):
+    """
+    Ejecuta actualización con 'git pull' y responde el resultado.
+    Pasos:
+    1. Ejecutar 'git pull' y capturar la salida
+    2. Retornar respuesta exitosa con la salida
+    3. Manejar errores de ejecución de git
+    4. Manejar ausencia del binario git
+    5. Manejar errores inesperados
+    """
+    try:
+        # 1. Ejecutar 'git pull'
+        result = subprocess.run(
+            ['git', 'pull'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        # 2. Retornar éxito
+        return JsonResponse({
+            'success': True,
+            'message': 'Actualización completada. Por favor, reinicia la aplicación.',
+            'output': result.stdout
+        })
+
+    except subprocess.CalledProcessError as e:
+        # 3. Manejar errores de git
+        return JsonResponse({
+            'success': False,
+            'message': 'Error al ejecutar git pull.',
+            'output': e.stderr
+        }, status=500)
+
+    except FileNotFoundError:
+        # 4. Manejar ausencia de git
+        return JsonResponse({
+            'success': False,
+            'message': 'El comando "git" no se encontró. Asegúrate de que Git esté instalado y en el PATH.'
+        }, status=500)
+
+    except Exception as e:
+        # 5. Manejar error inesperado
+        return JsonResponse({
+            'success': False,
+            'message': f'Ocurrió un error inesperado: {str(e)}'
+        }, status=500)

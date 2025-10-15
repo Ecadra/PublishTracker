@@ -1959,6 +1959,68 @@ function editPaper() {
 function generateReport() {
   Utils.showToast('Funcionalidad no implementada.', 'warning');
 }
+// =============================================================================
+// MÓDULO DE GESTIÓN DE ACTUALIZACIONES
+// =============================================================================
+
+/**
+ * Gestiona el proceso de actualización de la aplicación.
+ * @namespace UpdateManager
+ */
+const UpdateManager = {
+  /**
+   * Inicia el proceso de actualización.
+   * Pasos:
+   * 1. Validar URL del changelog
+   * 2. Notificar inicio al usuario
+   * 3. Abrir changelog en nueva pestaña
+   * 4. Enviar solicitud POST al backend
+   * 5. Procesar respuesta y notificar resultado
+   * 6. Manejar errores de red
+   * @param {string} changelogUrl - URL de la página de lanzamientos de GitHub.
+   */
+  applyUpdate(changelogUrl) {
+    // 1. Validar URL del changelog
+    if (!changelogUrl || typeof changelogUrl !== 'string') {
+      Utils.showToast('URL de changelog inválida.', 'danger', 6000);
+      return;
+    }
+
+    // 2. Notificar inicio
+    Utils.showToast('Iniciando actualización...', 'info', 5000);
+
+    // 3. Abrir changelog
+    window.open(changelogUrl, '_blank');
+
+    // 4. Enviar POST al backend
+    fetch('/core/apply-update/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': Utils.getCookie('csrftoken'),
+        'Content-Type': 'application/json'
+      }
+    })
+      // 5. Procesar respuesta
+      .then(response => response.json().then(data => ({ ok: response.ok, data })))
+      .then(({ ok, data }) => {
+        if (ok && data.success) {
+          Utils.showToast(
+            '✅ ¡Actualización completada! Reinicia la aplicación para ver los cambios.',
+            'success',
+            10000
+          );
+        } else {
+          Utils.showToast(`❌ Error: ${data.message || 'Actualización fallida.'}`, 'danger', 15000);
+          if (data && data.output) console.error('Detalles del error:', data.output);
+        }
+      })
+      // 6. Manejar errores de red
+      .catch(error => {
+        console.error('Error de red al intentar actualizar:', error);
+        Utils.showToast('❌ Error de conexión al intentar actualizar.', 'danger', 10000);
+      });
+  }
+};
 
 // =============================================================================
 // INICIALIZACIÓN

@@ -34,7 +34,11 @@
         <i class="fas fa-info-circle me-2"></i>
         <strong>¡Nueva versión disponible!</strong> 
         Se ha detectado la versión <strong>{{ update_info.version }}</strong>.
-        <a href="{{ update_info.url }}" target="_blank" class="alert-link">Ver detalles y descargar</a>.
+        
+        <a href="#" onclick="UpdateManager.applyUpdate('{{ update_info.url }}'); return false;" class="alert-link">
+            Ver detalles y descargar
+        </a>
+        
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
