@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
 from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.views.decorators.http import require_http_methods
 
 from publications.models import Paper, PaperAutor
@@ -96,13 +97,25 @@ def create_paper(request):
 
             paper = Paper.objects.create(**paper_data)
 
-            clone_dir = os.path.join(str(edicion.anio), str(revista.id), str(paper.id), 'archivos_revista')
+            # Se define la ruta relativa donde se guardarán las copias.
+            clone_dir_relative = os.path.join(str(edicion.anio), str(revista.id), str(paper.id), 'archivos_revista')
             archivos_de_la_edicion = ArchivoRevista.objects.filter(edicion=edicion)
+            
             for archivo_revista in archivos_de_la_edicion:
-                nombre_archivo_guardado = os.path.basename(archivo_revista.archivo.name)
-                destination_path = os.path.join(clone_dir, nombre_archivo_guardado)
-                with archivo_revista.archivo.open('rb') as original_file:
-                    default_storage.save(destination_path, original_file)
+                # Se abre y lee el contenido del archivo original de la revista.
+                archivo_revista.archivo.open('rb')
+                original_file_content = archivo_revista.archivo.read()
+                archivo_revista.archivo.close()
+
+                # Se obtiene el nombre base del archivo original.
+                nombre_base = os.path.basename(archivo_revista.archivo.name)
+                
+                # Se define la ruta de destino completa para la copia.
+                destination_path = os.path.join(clone_dir_relative, nombre_base)
+                
+                # Se guarda el contenido leído en la nueva ubicación usando ContentFile.
+                # Este método es más seguro y maneja la creación de directorios.
+                default_storage.save(destination_path, ContentFile(original_file_content))
 
             tipos_archivo_paper_map = {
                 'archivo_paper': 'Paper Completo',
