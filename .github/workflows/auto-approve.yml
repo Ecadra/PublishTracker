@@ -1,0 +1,63 @@
+name: Auto-approve PR from Maintainer
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  pull_request_target:
+    types: [opened, reopened]
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    if: github.actor == 'Ecadra'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Auto-approve Pull Request
+        uses: actions/github-script@v6
+        with:
+          script: |
+            console.log(`Auto-approving PR #${{ github.event.pull_request.number }} by ${{ github.actor }}`);
+            
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_request_number: context.payload.pull_request.number,
+                event: 'APPROVE',
+                body: ' **Auto-approved** - Approved via automated workflow for maintainer'
+              });
+              
+              console.log('PR approved successfully');
+              
+              // Opcional: Agregar label
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: ['auto-approved']
+              });
+              
+            } catch (error) {
+              console.error(' Error approving PR:', error);
+            }
+          
+      - name: Merge PR if approved and checks pass
+        uses: actions/github-script@v6
+        if: success()
+        with:
+          script: |
+            // Opcional: Auto-merge si todos los checks pasan
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_request_number: context.payload.pull_request.number,
+                merge_method: 'squash'
+              });
+              console.log('PR merged automatically');
+            } catch (error) {
+              console.log('ℹPR not ready for merge yet:', error.message);
+            }

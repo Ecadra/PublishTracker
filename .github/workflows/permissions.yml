@@ -1,0 +1,14 @@
+name: Configure Permissions
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+jobs:
+  permissions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update repository permissions
+        run: |
+          echo "Permissions will be set via PAT token"
